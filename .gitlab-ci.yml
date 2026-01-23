@@ -1,0 +1,348 @@
+# ============================================================================
+# GitLab CI/CD Configuration
+# ============================================================================
+# This file defines the CI/CD pipeline for running Playwright tests on GitLab.
+#
+# Pipeline Stages:
+# 1. install - Install dependencies
+# 2. test - Run tests
+# 3. report - Generate and publish reports
+#
+# Features:
+# - Parallel test execution
+# - Allure report generation
+# - Artifact collection (reports, traces, videos)
+# - Test result caching
+# - Multiple environment support
+#
+# Variables:
+# - ENV: Environment to test against (development/staging/production)
+# - BROWSER: Browser to use (chromium/firefox/webkit)
+# - WORKERS: Number of parallel workers
+#
+# Documentation: https://docs.gitlab.com/ee/ci/
+# ============================================================================
+
+# Docker image for running tests
+image: mcr.microsoft.com/playwright/python:v1.41.0-jammy
+
+# Define pipeline stages
+stages:
+  - install
+  - test
+  - report
+
+# Global variables
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  ENV: "development"
+  BROWSER: "chromium"
+  HEADLESS: "true"
+  WORKERS: "4"
+
+# Cache pip packages and Playwright browsers
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - .venv/
+
+# ============================================================================
+# Stage 1: Install Dependencies
+# ============================================================================
+
+install_dependencies:
+  stage: install
+  script:
+    - echo "Installing Python dependencies..."
+    - python -m venv .venv
+    - source .venv/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+    - echo "Installing Playwright browsers..."
+    - playwright install chromium firefox webkit
+    - playwright install-deps
+  artifacts:
+    paths:
+      - .venv/
+    expire_in: 1 hour
+  only:
+    - branches
+    - merge_requests
+    - main
+
+# ============================================================================
+# Stage 2: Run Tests
+# ============================================================================
+
+# Run smoke tests (critical path)
+smoke_tests:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - source .venv/bin/activate
+    - echo "Running smoke tests..."
+    - pytest -m smoke --browser=$BROWSER -n $WORKERS --alluredir=reports/allure-results
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - logs/
+    reports:
+      junit: reports/junit.xml
+    expire_in: 7 days
+  only:
+    - branches
+    - merge_requests
+    - main
+
+# Run all tests (full regression)
+regression_tests:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - source .venv/bin/activate
+    - echo "Running regression tests..."
+    - pytest -m regression --browser=$BROWSER -n $WORKERS --alluredir=reports/allure-results
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - logs/
+    expire_in: 7 days
+  only:
+    - main
+    - schedules
+
+# Run tests on Chromium
+test_chromium:
+  stage: test
+  dependencies:
+    - install_dependencies
+  variables:
+    BROWSER: "chromium"
+  script:
+    - source .venv/bin/activate
+    - echo "Running tests on Chromium..."
+    - pytest tests/ --browser=chromium -n $WORKERS --alluredir=reports/allure-results-chromium
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - logs/
+    expire_in: 7 days
+  only:
+    - main
+
+# Run tests on Firefox
+test_firefox:
+  stage: test
+  dependencies:
+    - install_dependencies
+  variables:
+    BROWSER: "firefox"
+  script:
+    - source .venv/bin/activate
+    - echo "Running tests on Firefox..."
+    - pytest tests/ --browser=firefox -n $WORKERS --alluredir=reports/allure-results-firefox
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - logs/
+    expire_in: 7 days
+  only:
+    - main
+  allow_failure: true
+
+# Run tests on WebKit
+test_webkit:
+  stage: test
+  dependencies:
+    - install_dependencies
+  variables:
+    BROWSER: "webkit"
+  script:
+    - source .venv/bin/activate
+    - echo "Running tests on WebKit..."
+    - pytest tests/ --browser=webkit -n $WORKERS --alluredir=reports/allure-results-webkit
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - logs/
+    expire_in: 7 days
+  only:
+    - main
+  allow_failure: true
+
+# Run specific test suites in parallel
+test_login:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - source .venv/bin/activate
+    - pytest tests/login/ -n $WORKERS --alluredir=reports/allure-results-login
+  artifacts:
+    when: always
+    paths:
+      - reports/
+    expire_in: 7 days
+  only:
+    - merge_requests
+
+test_products:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - source .venv/bin/activate
+    - pytest tests/products/ -n $WORKERS --alluredir=reports/allure-results-products
+  artifacts:
+    when: always
+    paths:
+      - reports/
+    expire_in: 7 days
+  only:
+    - merge_requests
+
+test_checkout:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - source .venv/bin/activate
+    - pytest tests/checkout/ -n $WORKERS --alluredir=reports/allure-results-checkout
+  artifacts:
+    when: always
+    paths:
+      - reports/
+    expire_in: 7 days
+  only:
+    - merge_requests
+
+# ============================================================================
+# Stage 3: Generate Reports
+# ============================================================================
+
+generate_allure_report:
+  stage: report
+  dependencies:
+    - smoke_tests
+  script:
+    - source .venv/bin/activate
+    - echo "Generating Allure report..."
+    - pip install allure-pytest
+    - allure generate reports/allure-results -o reports/allure-report --clean
+  artifacts:
+    paths:
+      - reports/allure-report/
+    expire_in: 30 days
+  only:
+    - main
+    - merge_requests
+
+# Publish test results
+pages:
+  stage: report
+  dependencies:
+    - generate_allure_report
+  script:
+    - mkdir -p public
+    - cp -r reports/allure-report/* public/
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  only:
+    - main
+
+# ============================================================================
+# Scheduled Jobs
+# ============================================================================
+
+# Nightly full test run
+nightly_tests:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - source .venv/bin/activate
+    - echo "Running nightly full test suite..."
+    - pytest tests/ --browser=$BROWSER -n $WORKERS --alluredir=reports/allure-results-nightly
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - logs/
+    expire_in: 14 days
+  only:
+    - schedules
+
+# ============================================================================
+# Manual Jobs
+# ============================================================================
+
+# Manual job to run tests on staging
+test_staging:
+  stage: test
+  dependencies:
+    - install_dependencies
+  variables:
+    ENV: "staging"
+  script:
+    - source .venv/bin/activate
+    - pytest tests/ --browser=$BROWSER -n $WORKERS --alluredir=reports/allure-results-staging
+  artifacts:
+    when: always
+    paths:
+      - reports/
+    expire_in: 7 days
+  when: manual
+  only:
+    - main
+
+# Manual job to run tests on production
+test_production:
+  stage: test
+  dependencies:
+    - install_dependencies
+  variables:
+    ENV: "production"
+  script:
+    - source .venv/bin/activate
+    - pytest tests/ --browser=$BROWSER -n $WORKERS --alluredir=reports/allure-results-production
+  artifacts:
+    when: always
+    paths:
+      - reports/
+    expire_in: 7 days
+  when: manual
+  only:
+    - main
+
+# ============================================================================
+# Lint and Code Quality
+# ============================================================================
+
+code_quality:
+  stage: test
+  dependencies:
+    - install_dependencies
+  script:
+    - source .venv/bin/activate
+    - echo "Running code quality checks..."
+    - pip install ruff black mypy
+    - echo "Running Ruff linter..."
+    - ruff check . || true
+    - echo "Running Black formatter check..."
+    - black --check . || true
+    - echo "Running MyPy type checker..."
+    - mypy --install-types --non-interactive . || true
+  allow_failure: true
+  only:
+    - merge_requests
+    - main

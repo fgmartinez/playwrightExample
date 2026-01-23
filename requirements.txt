@@ -1,0 +1,41 @@
+# Core Testing Framework Dependencies
+# =================================
+# Playwright - Modern end-to-end testing framework
+playwright==1.41.2
+
+# Pytest - Testing framework and plugins
+pytest==8.0.0
+pytest-playwright==0.4.4
+pytest-asyncio==0.23.3
+pytest-xdist==3.5.0  # Parallel test execution
+pytest-html==4.1.1  # HTML reporting
+pytest-rerunfailures==13.0  # Automatic test retries
+pytest-timeout==2.2.0  # Test timeout management
+
+# Allure Reporting - Beautiful test reports
+allure-pytest==2.13.2
+
+# Configuration & Environment Management
+# ======================================
+python-dotenv==1.0.1  # Environment variable management
+pydantic==2.5.3  # Data validation and settings management
+pydantic-settings==2.1.0
+
+# Utilities
+# =========
+faker==22.6.0  # Generate fake data for testing
+Pillow==10.2.0  # Image processing for visual comparisons
+
+# Code Quality
+# ============
+ruff==0.1.15  # Fast Python linter
+black==24.1.1  # Code formatter
+mypy==1.8.0  # Static type checker
+
+# Logging & Monitoring
+# ====================
+colorlog==6.8.2  # Colored logging output
+
+# Data Handling
+# =============
+pyyaml==6.0.1  # YAML configuration files

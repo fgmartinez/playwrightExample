@@ -1,0 +1,349 @@
+# ============================================================================
+# GitHub Actions Workflow - Playwright Tests
+# ============================================================================
+# This workflow runs Playwright tests on GitHub Actions with parallel execution,
+# cross-browser testing, and report generation.
+#
+# Triggers:
+# - Push to main branch
+# - Pull requests
+# - Manual workflow dispatch
+# - Scheduled runs (nightly)
+#
+# Features:
+# - Matrix testing (multiple browsers, OS)
+# - Parallel test execution
+# - Allure report generation
+# - Artifact upload (reports, traces, videos)
+# - Test result publishing
+#
+# Documentation: https://docs.github.com/en/actions
+# ============================================================================
+
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  PYTHON_VERSION: '3.11'
+  ENV: 'development'
+  HEADLESS: 'true'
+
+jobs:
+  # ========================================================================
+  # Job 1: Setup and Lint
+  # ========================================================================
+
+  setup-and-lint:
+    name: Setup and Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black mypy
+
+      - name: Run Ruff linter
+        run: ruff check . --output-format=github
+        continue-on-error: true
+
+      - name: Run Black formatter check
+        run: black --check .
+        continue-on-error: true
+
+      - name: Run MyPy type checker
+        run: mypy --install-types --non-interactive .
+        continue-on-error: true
+
+  # ========================================================================
+  # Job 2: Smoke Tests (Fast Feedback)
+  # ========================================================================
+
+  smoke-tests:
+    name: Smoke Tests (Chromium)
+    runs-on: ubuntu-latest
+    needs: setup-and-lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run smoke tests
+        run: pytest -m smoke --browser=chromium -n 4 --alluredir=allure-results
+        env:
+          ENV: ${{ inputs.environment || 'development' }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: smoke-test-results
+          path: |
+            reports/
+            logs/
+            allure-results/
+          retention-days: 7
+
+  # ========================================================================
+  # Job 3: Cross-Browser Tests (Matrix)
+  # ========================================================================
+
+  cross-browser-tests:
+    name: Tests - ${{ matrix.browser }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: smoke-tests
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        browser: [chromium, firefox, webkit]
+        exclude:
+          # Exclude some combinations to save CI time
+          - os: windows-latest
+            browser: webkit
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install ${{ matrix.browser }} --with-deps
+
+      - name: Run tests
+        run: pytest tests/ --browser=${{ matrix.browser }} -n 4 --alluredir=allure-results
+        env:
+          ENV: ${{ inputs.environment || 'development' }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-${{ matrix.browser }}-${{ matrix.os }}
+          path: |
+            reports/
+            logs/
+            allure-results/
+          retention-days: 7
+
+  # ========================================================================
+  # Job 4: Feature-Specific Tests (Parallel)
+  # ========================================================================
+
+  feature-tests:
+    name: Feature Tests - ${{ matrix.feature }}
+    runs-on: ubuntu-latest
+    needs: smoke-tests
+    if: github.event_name == 'pull_request'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        feature:
+          - login
+          - products
+          - cart
+          - checkout
+          - e2e
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run ${{ matrix.feature }} tests
+        run: pytest tests/${{ matrix.feature }}/ -n 4 --alluredir=allure-results
+        env:
+          ENV: development
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.feature }}-test-results
+          path: |
+            reports/
+            allure-results/
+          retention-days: 7
+
+  # ========================================================================
+  # Job 5: Generate Allure Report
+  # ========================================================================
+
+  generate-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, cross-browser-tests]
+    if: always() && (github.event_name == 'push' || github.event_name == 'schedule')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: all-results
+
+      - name: Setup Java (for Allure)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Allure
+        run: |
+          wget https://github.com/allure-framework/allure2/releases/download/2.25.0/allure-2.25.0.tgz
+          tar -zxvf allure-2.25.0.tgz
+          sudo mv allure-2.25.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+
+      - name: Generate Allure report
+        run: |
+          mkdir -p allure-results
+          find all-results -name "allure-results" -type d -exec cp -r {}/* allure-results/ \;
+          allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
+
+      - name: Deploy report to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          destination_dir: test-reports/${{ github.run_number }}
+
+  # ========================================================================
+  # Job 6: Test Results Summary
+  # ========================================================================
+
+  test-summary:
+    name: Test Results Summary
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, cross-browser-tests, feature-tests]
+    if: always()
+
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        with:
+          path: test-results
+
+      - name: Generate summary
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment || 'development' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Smoke Tests: ${{ needs.smoke-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Cross-Browser Tests: ${{ needs.cross-browser-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Feature Tests: ${{ needs.feature-tests.result }}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================================================================
+  # Job 7: Notify on Failure
+  # ========================================================================
+
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, cross-browser-tests, feature-tests]
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Test Failure - ${context.workflow} #${context.runNumber}`,
+              body: `
+                ### Test Failure Detected
+
+                **Workflow:** ${context.workflow}
+                **Run Number:** ${context.runNumber}
+                **Branch:** ${context.ref}
+                **Commit:** ${context.sha}
+
+                [View workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+              `,
+              labels: ['test-failure', 'automated']
+            })
