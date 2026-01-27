@@ -22,7 +22,7 @@ from playwright.async_api import Page
 from pages import (
     CartPage,
     CheckoutCompletePage,
-    CheckoutInformationPage,
+    CheckoutInfoPage,
     CheckoutOverviewPage,
     LoginPage,
     ProductsPage,
@@ -34,7 +34,7 @@ logger = get_logger(__name__)
 
 
 @pytest.fixture
-async def checkout_info_page(page: Page) -> CheckoutInformationPage:
+async def checkout_info_page(page: Page) -> CheckoutInfoPage:
     """Fixture providing checkout information page with items in cart."""
     login_page = LoginPage(page)
     await login_page.navigate()
@@ -48,7 +48,7 @@ async def checkout_info_page(page: Page) -> CheckoutInformationPage:
     cart_page = CartPage(page)
     await cart_page.proceed_to_checkout()
 
-    checkout_page = CheckoutInformationPage(page)
+    checkout_page = CheckoutInfoPage(page)
     return checkout_page
 
 
@@ -58,30 +58,30 @@ class TestCheckoutInformation:
     """Tests for checkout information step."""
 
     async def test_checkout_info_page_loads(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> None:
         """Verify checkout information page loads."""
         checkout_page = checkout_info_page
 
-        assert await checkout_page.is_page_loaded(), "Checkout info page should load"
-        await checkout_page.assert_checkout_info_page_displayed()
+        assert await checkout_page.is_loaded(), "Checkout info page should load"
+        await checkout_page.assert_displayed()
 
         logger.info("✓ Checkout information page loaded")
 
     async def test_fill_valid_information(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> None:
         """Verify valid information can be filled and submitted."""
         checkout_page = checkout_info_page
 
         user_data = generate_test_user_data()
-        await checkout_page.fill_information(
+        await checkout_page.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
 
-        await checkout_page.continue_to_overview()
+        await checkout_page.continue_checkout()
 
         # Should navigate to overview page
         assert "/checkout-step-two.html" in checkout_page.current_url
@@ -89,15 +89,15 @@ class TestCheckoutInformation:
         logger.info("✓ Valid information accepted")
 
     async def test_empty_first_name_validation(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> None:
         """Verify validation for empty first name."""
         checkout_page = checkout_info_page
 
-        await checkout_page.fill_information("", "Doe", "12345")
-        await checkout_page.continue_to_overview()
+        await checkout_page.fill_info("", "Doe", "12345")
+        await checkout_page.continue_checkout()
 
-        assert await checkout_page.is_error_displayed(), "Error should be displayed"
+        assert await checkout_page.has_error(), "Error should be displayed"
         error_message = await checkout_page.get_error_message()
         assert "first name" in error_message.lower(), (
             f"Error should mention first name, got: {error_message}"
@@ -106,15 +106,15 @@ class TestCheckoutInformation:
         logger.info("✓ Empty first name validation works")
 
     async def test_empty_last_name_validation(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> None:
         """Verify validation for empty last name."""
         checkout_page = checkout_info_page
 
-        await checkout_page.fill_information("John", "", "12345")
-        await checkout_page.continue_to_overview()
+        await checkout_page.fill_info("John", "", "12345")
+        await checkout_page.continue_checkout()
 
-        assert await checkout_page.is_error_displayed(), "Error should be displayed"
+        assert await checkout_page.has_error(), "Error should be displayed"
         error_message = await checkout_page.get_error_message()
         assert "last name" in error_message.lower(), (
             f"Error should mention last name, got: {error_message}"
@@ -123,15 +123,15 @@ class TestCheckoutInformation:
         logger.info("✓ Empty last name validation works")
 
     async def test_empty_zip_code_validation(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> None:
         """Verify validation for empty zip code."""
         checkout_page = checkout_info_page
 
-        await checkout_page.fill_information("John", "Doe", "")
-        await checkout_page.continue_to_overview()
+        await checkout_page.fill_info("John", "Doe", "")
+        await checkout_page.continue_checkout()
 
-        assert await checkout_page.is_error_displayed(), "Error should be displayed"
+        assert await checkout_page.has_error(), "Error should be displayed"
         error_message = await checkout_page.get_error_message()
         assert "postal code" in error_message.lower(), (
             f"Error should mention postal code, got: {error_message}"
@@ -140,12 +140,12 @@ class TestCheckoutInformation:
         logger.info("✓ Empty zip code validation works")
 
     async def test_cancel_checkout(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> None:
         """Verify cancel button returns to cart."""
         checkout_page = checkout_info_page
 
-        await checkout_page.cancel_checkout()
+        await checkout_page.cancel()
 
         assert "/cart.html" in checkout_page.current_url, (
             "Should return to cart page"
@@ -161,16 +161,16 @@ class TestCheckoutOverview:
 
     @pytest.fixture
     async def checkout_overview_page(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> CheckoutOverviewPage:
         """Navigate to checkout overview."""
         user_data = generate_test_user_data()
-        await checkout_info_page.fill_information(
+        await checkout_info_page.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
-        await checkout_info_page.continue_to_overview()
+        await checkout_info_page.continue_checkout()
 
         overview_page = CheckoutOverviewPage(checkout_info_page.page)
         return overview_page
@@ -181,8 +181,8 @@ class TestCheckoutOverview:
         """Verify checkout overview page loads."""
         overview_page = checkout_overview_page
 
-        assert await overview_page.is_page_loaded(), "Overview page should load"
-        await overview_page.assert_checkout_overview_page_displayed()
+        assert await overview_page.is_loaded(), "Overview page should load"
+        await overview_page.assert_displayed()
 
         logger.info("✓ Checkout overview page loaded")
 
@@ -192,7 +192,7 @@ class TestCheckoutOverview:
         """Verify order items are displayed in overview."""
         overview_page = checkout_overview_page
 
-        items = await overview_page.get_order_item_names()
+        items = await overview_page.get_item_names()
         assert len(items) == 2, f"Should display 2 items, got: {len(items)}"
 
         logger.info(f"✓ {len(items)} order items displayed")
@@ -247,21 +247,21 @@ class TestCheckoutComplete:
 
     @pytest.fixture
     async def complete_checkout(
-        self, checkout_info_page: CheckoutInformationPage
+        self, checkout_info_page: CheckoutInfoPage
     ) -> CheckoutCompletePage:
         """Complete entire checkout flow."""
         # Fill information
         user_data = generate_test_user_data()
-        await checkout_info_page.fill_information(
+        await checkout_info_page.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
-        await checkout_info_page.continue_to_overview()
+        await checkout_info_page.continue_checkout()
 
         # Finish checkout
         overview_page = CheckoutOverviewPage(checkout_info_page.page)
-        await overview_page.finish_checkout()
+        await overview_page.finish()
 
         # Return complete page
         complete_page = CheckoutCompletePage(checkout_info_page.page)
@@ -273,8 +273,8 @@ class TestCheckoutComplete:
         """Verify checkout complete page loads."""
         complete_page = complete_checkout
 
-        assert await complete_page.is_page_loaded(), "Complete page should load"
-        await complete_page.assert_checkout_complete_page_displayed()
+        assert await complete_page.is_loaded(), "Complete page should load"
+        await complete_page.assert_displayed()
 
         logger.info("✓ Checkout complete page loaded")
 
