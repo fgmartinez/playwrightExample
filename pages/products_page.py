@@ -1,487 +1,199 @@
 """
-============================================================================
 Products Page Object
-============================================================================
-This module defines the ProductsPage class for the SauceDemo inventory page
-where users can browse, filter, sort, and add products to their cart.
-
-Page URL: https://www.saucedemo.com/inventory.html
-Features:
-- Product browsing
-- Sorting (name, price)
-- Adding/removing items from cart
-- Product details navigation
-- Cart badge management
-
-Usage:
-    products_page = ProductsPage(page)
-    await products_page.navigate()
-    products = await products_page.get_all_product_names()
-    await products_page.add_product_to_cart("Sauce Labs Backpack")
-
-Author: Your Name
-Created: 2026-01-23
-============================================================================
+====================
+Page object for SauceDemo inventory/products page.
+Uses ProductCard component for individual product interactions.
 """
 
 from playwright.async_api import Page
 
 from pages.base_page import BasePage
-from utils.exceptions import ElementNotFoundError
+from pages.components import ProductCard
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class ProductsPage(BasePage):
-    """
-    Page Object for SauceDemo Products/Inventory Page.
-
-    This class provides methods to interact with the products page,
-    including browsing products, sorting, filtering, and cart operations.
-
-    Attributes:
-        url: Products page URL path
-        page_title: Page title selector
-        product_items: All product item containers
-        product_sort_dropdown: Sort dropdown selector
-        cart_badge: Shopping cart badge (item count)
-        cart_link: Shopping cart link
-        menu_button: Hamburger menu button
-        logout_link: Logout link in menu
-    """
+    """Page object for the SauceDemo products/inventory page."""
 
     def __init__(self, page: Page) -> None:
-        """
-        Initialize the ProductsPage.
-
-        Args:
-            page: Playwright page instance
-        """
         super().__init__(page)
         self.url = "/inventory.html"
 
-        # Page elements
-        self.page_title = ".title"
-        self.product_items = ".inventory_item"
-        self.product_sort_dropdown = '[data-test="product_sort_container"]'
-        self.cart_badge = ".shopping_cart_badge"
-        self.cart_link = ".shopping_cart_link"
-        self.menu_button = "#react-burger-menu-btn"
-        self.logout_link = "#logout_sidebar_link"
+        # Header elements
+        self.title = page.locator(".title")
+        self.cart_link = page.locator(".shopping_cart_link")
+        self.cart_badge = page.locator(".shopping_cart_badge")
 
-        # Product card elements (relative to product item)
-        self.product_name = ".inventory_item_name"
-        self.product_description = ".inventory_item_desc"
-        self.product_price = ".inventory_item_price"
-        self.product_image = ".inventory_item_img"
-        self.add_to_cart_button = "button[id^='add-to-cart']"
-        self.remove_from_cart_button = "button[id^='remove']"
+        # Sort dropdown
+        self.sort_dropdown = page.get_by_test_id("product_sort_container")
 
-        logger.debug("ProductsPage initialized")
+        # Menu
+        self.menu_button = page.locator("#react-burger-menu-btn")
+        self.menu_close_button = page.locator("#react-burger-cross-btn")
+        self.logout_link = page.locator("#logout_sidebar_link")
+
+        # Product cards - use component class
+        self._product_cards = ProductCard.all_cards(page)
 
     # ========================================================================
-    # Navigation Actions
+    # Product Card Access
     # ========================================================================
 
-    async def navigate_to_cart(self) -> None:
-        """Navigate to the shopping cart page."""
-        logger.info("Navigating to cart")
-        await self.page.locator(self.cart_link).click()
+    def product(self, name: str) -> ProductCard:
+        """Get a ProductCard component by product name."""
+        return ProductCard.by_name(self.page, name)
 
-    async def open_menu(self) -> None:
-        """Open the hamburger menu."""
-        logger.info("Opening menu")
-        await self.page.locator(self.menu_button).click()
-
-    async def logout(self) -> None:
-        """Logout from the application."""
-        logger.info("Logging out")
-        await self.open_menu()
-        await self.page.locator(self.logout_link).wait_for(state="visible")
-        await self.page.locator(self.logout_link).click()
-
-    # ========================================================================
-    # Product Discovery
-    # ========================================================================
-
-    async def get_all_product_names(self) -> list[str]:
-        """
-        Get names of all products on the page.
-
-        Returns:
-            list[str]: List of product names
-        """
-        elements = await self.page.locator(self.product_name).all()
-        names = [await elem.text_content() for elem in elements]
-        cleaned_names = [name.strip() for name in names if name]
-        logger.debug(f"Found {len(cleaned_names)} products")
-        return cleaned_names
-
-    async def get_all_product_prices(self) -> list[float]:
-        """
-        Get prices of all products on the page.
-
-        Returns:
-            list[float]: List of product prices
-        """
-        elements = await self.page.locator(self.product_price).all()
-        price_texts = [await elem.text_content() for elem in elements]
-
-        prices = []
-        for price_text in price_texts:
-            if price_text:
-                clean_price = price_text.strip().replace("$", "")
-                prices.append(float(clean_price))
-
-        logger.debug(f"Found {len(prices)} product prices")
-        return prices
+    async def get_all_products(self) -> list[ProductCard]:
+        """Get all ProductCard components on the page."""
+        cards = await self._product_cards.all()
+        return [ProductCard(card) for card in cards]
 
     async def get_product_count(self) -> int:
-        """
-        Get the total number of products displayed.
+        """Get count of products displayed."""
+        return await self._product_cards.count()
 
-        Returns:
-            int: Number of products
-        """
-        count = await self.page.locator(self.product_items).count()
-        logger.debug(f"Product count: {count}")
-        return count
+    async def get_all_product_names(self) -> list[str]:
+        """Get names of all products."""
+        products = await self.get_all_products()
+        return [await p.get_name() for p in products]
 
-    async def get_product_details(self, product_name: str) -> dict[str, str]:
-        """
-        Get detailed information about a specific product.
-
-        Args:
-            product_name: Name of the product
-
-        Returns:
-            dict[str, str]: Product details (name, description, price)
-
-        Raises:
-            ElementNotFoundError: If product not found
-        """
-        try:
-            product_item = self.page.locator(self.product_items).filter(
-                has_text=product_name
-            ).first
-
-            name = await product_item.locator(self.product_name).text_content()
-            description = await product_item.locator(self.product_description).text_content()
-            price = await product_item.locator(self.product_price).text_content()
-
-            details = {
-                "name": name.strip() if name else "",
-                "description": description.strip() if description else "",
-                "price": price.strip() if price else "",
-            }
-
-            logger.debug(f"Retrieved details for product: {product_name}")
-            return details
-
-        except Exception as e:
-            logger.error(f"Product '{product_name}' not found: {e}")
-            raise ElementNotFoundError(
-                f"Product '{product_name}' not found",
-                product_name=product_name,
-            )
+    async def get_all_product_prices(self) -> list[float]:
+        """Get prices of all products."""
+        products = await self.get_all_products()
+        return [await p.get_price() for p in products]
 
     # ========================================================================
     # Cart Operations
     # ========================================================================
 
-    async def add_product_to_cart(self, product_name: str) -> None:
-        """
-        Add a specific product to the cart by name.
+    async def add_to_cart(self, product_name: str) -> None:
+        """Add a product to cart by name."""
+        logger.info(f"Adding to cart: {product_name}")
+        await self.product(product_name).add_to_cart()
 
-        Args:
-            product_name: Name of the product to add
+    async def remove_from_cart(self, product_name: str) -> None:
+        """Remove a product from cart by name."""
+        logger.info(f"Removing from cart: {product_name}")
+        await self.product(product_name).remove_from_cart()
 
-        Raises:
-            ElementNotFoundError: If product not found
-        """
-        logger.info(f"Adding product to cart: {product_name}")
-        try:
-            product_item = self.page.locator(self.product_items).filter(
-                has_text=product_name
-            ).first
+    async def add_multiple_to_cart(self, product_names: list[str]) -> None:
+        """Add multiple products to cart."""
+        for name in product_names:
+            await self.add_to_cart(name)
 
-            add_button = product_item.locator(self.add_to_cart_button)
-            await add_button.click()
-            logger.debug(f"Product added to cart: {product_name}")
-
-        except Exception as e:
-            logger.error(f"Failed to add product to cart: {e}")
-            raise ElementNotFoundError(
-                f"Could not add product '{product_name}' to cart",
-                product_name=product_name,
-            )
-
-    async def remove_product_from_cart(self, product_name: str) -> None:
-        """
-        Remove a specific product from the cart by name.
-
-        Args:
-            product_name: Name of the product to remove
-
-        Raises:
-            ElementNotFoundError: If product not found or not in cart
-        """
-        logger.info(f"Removing product from cart: {product_name}")
-        try:
-            product_item = self.page.locator(self.product_items).filter(
-                has_text=product_name
-            ).first
-
-            remove_button = product_item.locator(self.remove_from_cart_button)
-            await remove_button.click()
-            logger.debug(f"Product removed from cart: {product_name}")
-
-        except Exception as e:
-            logger.error(f"Failed to remove product from cart: {e}")
-            raise ElementNotFoundError(
-                f"Could not remove product '{product_name}' from cart",
-                product_name=product_name,
-            )
-
-    async def add_multiple_products_to_cart(self, product_names: list[str]) -> None:
-        """
-        Add multiple products to the cart.
-
-        Args:
-            product_names: List of product names to add
-        """
-        logger.info(f"Adding {len(product_names)} products to cart")
-        for product_name in product_names:
-            await self.add_product_to_cart(product_name)
-
-    async def add_all_products_to_cart(self) -> None:
-        """Add all available products to the cart."""
-        logger.info("Adding all products to cart")
-        product_names = await self.get_all_product_names()
-        await self.add_multiple_products_to_cart(product_names)
+    async def add_all_to_cart(self) -> None:
+        """Add all products to cart."""
+        products = await self.get_all_products()
+        for product in products:
+            await product.add_to_cart()
 
     async def is_product_in_cart(self, product_name: str) -> bool:
-        """
-        Check if a product is currently in the cart.
-
-        Args:
-            product_name: Name of the product
-
-        Returns:
-            bool: True if product is in cart (Remove button is visible)
-        """
-        try:
-            product_item = self.page.locator(self.product_items).filter(
-                has_text=product_name
-            ).first
-
-            remove_button = product_item.locator(self.remove_from_cart_button)
-            is_in_cart = await remove_button.is_visible()
-
-            logger.debug(f"Product '{product_name}' in cart: {is_in_cart}")
-            return is_in_cart
-
-        except Exception:
-            return False
+        """Check if a product is in cart."""
+        return await self.product(product_name).is_in_cart()
 
     # ========================================================================
     # Cart Badge
     # ========================================================================
 
-    async def get_cart_badge_count(self) -> int:
-        """
-        Get the number displayed on the cart badge.
+    async def get_cart_count(self) -> int:
+        """Get number of items shown in cart badge (0 if not visible)."""
+        if await self.is_visible_safe(self.cart_badge):
+            text = await self.get_text(self.cart_badge)
+            return int(text) if text else 0
+        return 0
 
-        Returns:
-            int: Number of items in cart (0 if badge not visible)
-        """
-        try:
-            if await self.is_visible(self.cart_badge):
-                badge_text = await self.get_text(self.cart_badge)
-                count = int(badge_text)
-                logger.debug(f"Cart badge count: {count}")
-                return count
-            else:
-                logger.debug("Cart badge not visible (cart is empty)")
-                return 0
-        except Exception as e:
-            logger.error(f"Error getting cart badge count: {e}")
-            return 0
+    async def has_cart_badge(self) -> bool:
+        """Check if cart badge is visible (has items)."""
+        return await self.is_visible_safe(self.cart_badge)
 
-    async def is_cart_badge_visible(self) -> bool:
-        """
-        Check if the cart badge is visible.
+    # ========================================================================
+    # Navigation
+    # ========================================================================
 
-        Returns:
-            bool: True if cart badge is visible
-        """
-        return await self.is_visible(self.cart_badge)
+    async def go_to_cart(self) -> None:
+        """Navigate to shopping cart."""
+        logger.info("Navigating to cart")
+        await self.cart_link.click()
+
+    async def open_menu(self) -> None:
+        """Open the hamburger menu."""
+        await self.menu_button.click()
+        await self.logout_link.wait_for(state="visible")
+
+    async def logout(self) -> None:
+        """Logout via menu."""
+        logger.info("Logging out")
+        await self.open_menu()
+        await self.logout_link.click()
 
     # ========================================================================
     # Sorting
     # ========================================================================
 
-    async def sort_products(self, sort_option: str) -> None:
+    async def sort_by(self, option: str) -> None:
         """
-        Sort products using the sort dropdown.
+        Sort products.
 
         Args:
-            sort_option: Sort option value
-                - "az": Name (A to Z)
-                - "za": Name (Z to A)
-                - "lohi": Price (low to high)
-                - "hilo": Price (high to low)
+            option: Sort value - "az", "za", "lohi", "hilo"
         """
-        logger.info(f"Sorting products by: {sort_option}")
-        await self.page.locator(self.product_sort_dropdown).select_option(sort_option)
-        # Wait for sort to take effect
-        await self.page.wait_for_timeout(500)
+        logger.info(f"Sorting by: {option}")
+        await self.sort_dropdown.select_option(option)
 
-    async def get_current_sort_option(self) -> str:
-        """
-        Get the currently selected sort option.
+    async def get_current_sort(self) -> str:
+        """Get currently selected sort option."""
+        return await self.sort_dropdown.input_value()
 
-        Returns:
-            str: Current sort option value
-        """
-        option = await self.page.locator(self.product_sort_dropdown).get_attribute("value")
-        return option or "az"
+    async def verify_sorted_by_name_asc(self) -> bool:
+        """Verify products are sorted A-Z."""
+        names = await self.get_all_product_names()
+        return names == sorted(names)
+
+    async def verify_sorted_by_name_desc(self) -> bool:
+        """Verify products are sorted Z-A."""
+        names = await self.get_all_product_names()
+        return names == sorted(names, reverse=True)
+
+    async def verify_sorted_by_price_asc(self) -> bool:
+        """Verify products are sorted by price low to high."""
+        prices = await self.get_all_product_prices()
+        return prices == sorted(prices)
+
+    async def verify_sorted_by_price_desc(self) -> bool:
+        """Verify products are sorted by price high to low."""
+        prices = await self.get_all_product_prices()
+        return prices == sorted(prices, reverse=True)
 
     # ========================================================================
-    # Verification Methods
+    # Page State
     # ========================================================================
 
-    async def is_page_loaded(self) -> bool:
-        """
-        Verify that the products page is fully loaded.
-
-        Returns:
-            bool: True if page is loaded
-        """
+    async def is_loaded(self) -> bool:
+        """Check if page is fully loaded."""
         try:
-            await self.page.locator(self.page_title).wait_for(state="visible", timeout=5000)
-            await self.page.locator(self.product_items).first.wait_for(state="visible", timeout=5000)
-            logger.debug("Products page fully loaded")
+            await self.title.wait_for(state="visible", timeout=5000)
+            await self._product_cards.first.wait_for(state="visible", timeout=5000)
             return True
-        except Exception as e:
-            logger.error(f"Products page not fully loaded: {e}")
+        except Exception:
             return False
-
-    async def verify_products_sorted_alphabetically_asc(self) -> bool:
-        """
-        Verify that products are sorted alphabetically (A-Z).
-
-        Returns:
-            bool: True if sorted correctly
-        """
-        names = await self.get_all_product_names()
-        sorted_names = sorted(names)
-        is_sorted = names == sorted_names
-
-        if is_sorted:
-            logger.debug("Products are sorted alphabetically (A-Z)")
-        else:
-            logger.warning(f"Products NOT sorted alphabetically. Expected: {sorted_names}, Got: {names}")
-
-        return is_sorted
-
-    async def verify_products_sorted_alphabetically_desc(self) -> bool:
-        """
-        Verify that products are sorted alphabetically (Z-A).
-
-        Returns:
-            bool: True if sorted correctly
-        """
-        names = await self.get_all_product_names()
-        sorted_names = sorted(names, reverse=True)
-        is_sorted = names == sorted_names
-
-        if is_sorted:
-            logger.debug("Products are sorted alphabetically (Z-A)")
-        else:
-            logger.warning("Products NOT sorted alphabetically (Z-A)")
-
-        return is_sorted
-
-    async def verify_products_sorted_by_price_asc(self) -> bool:
-        """
-        Verify that products are sorted by price (low to high).
-
-        Returns:
-            bool: True if sorted correctly
-        """
-        prices = await self.get_all_product_prices()
-        sorted_prices = sorted(prices)
-        is_sorted = prices == sorted_prices
-
-        if is_sorted:
-            logger.debug("Products are sorted by price (low to high)")
-        else:
-            logger.warning(f"Products NOT sorted by price. Expected: {sorted_prices}, Got: {prices}")
-
-        return is_sorted
-
-    async def verify_products_sorted_by_price_desc(self) -> bool:
-        """
-        Verify that products are sorted by price (high to low).
-
-        Returns:
-            bool: True if sorted correctly
-        """
-        prices = await self.get_all_product_prices()
-        sorted_prices = sorted(prices, reverse=True)
-        is_sorted = prices == sorted_prices
-
-        if is_sorted:
-            logger.debug("Products are sorted by price (high to low)")
-        else:
-            logger.warning("Products NOT sorted by price (high to low)")
-
-        return is_sorted
 
     # ========================================================================
     # Assertions
     # ========================================================================
 
-    async def assert_products_page_displayed(self) -> None:
-        """
-        Assert that the products page is displayed correctly.
+    async def assert_displayed(self) -> None:
+        """Assert products page is displayed."""
+        await self.assert_visible(self.title)
+        await self.assert_has_text(self.title, "Products")
 
-        Raises:
-            AssertionError: If products page is not displayed
-        """
-        await self.assert_element_visible(self.page_title)
-        await self.assert_text_content(self.page_title, "Products")
-        logger.debug("Products page is displayed correctly")
-
-    async def assert_cart_badge_count(self, expected_count: int) -> None:
-        """
-        Assert that the cart badge shows the expected count.
-
-        Args:
-            expected_count: Expected number of items in cart
-
-        Raises:
-            AssertionError: If count doesn't match
-        """
-        actual_count = await self.get_cart_badge_count()
-        assert actual_count == expected_count, (
-            f"Expected cart badge count to be {expected_count}, "
-            f"but got {actual_count}"
-        )
-        logger.debug(f"Cart badge count is correct: {expected_count}")
+    async def assert_cart_count(self, expected: int) -> None:
+        """Assert cart badge shows expected count."""
+        actual = await self.get_cart_count()
+        assert actual == expected, f"Expected cart count {expected}, got {actual}"
 
     async def assert_product_in_cart(self, product_name: str) -> None:
-        """
-        Assert that a product is in the cart.
-
-        Args:
-            product_name: Name of the product
-
-        Raises:
-            AssertionError: If product is not in cart
-        """
-        is_in_cart = await self.is_product_in_cart(product_name)
-        assert is_in_cart, f"Product '{product_name}' should be in cart"
-        logger.debug(f"Product '{product_name}' is in cart")
+        """Assert product is in cart."""
+        assert await self.is_product_in_cart(product_name), \
+            f"Product '{product_name}' should be in cart"
