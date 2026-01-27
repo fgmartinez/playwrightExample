@@ -212,7 +212,7 @@ def browser_context_args() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="session")
-async def auth_state_file() -> Path:
+def auth_state_file() -> Path:
     """
     Provide path to authentication state storage file.
 
