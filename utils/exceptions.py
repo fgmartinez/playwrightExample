@@ -240,7 +240,7 @@ class NavigationError(TestException):
 
 
 class ValidationError(TestException):
-    """
+    r"""
     Raised when data validation fails.
 
     This exception is raised when:

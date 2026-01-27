@@ -37,7 +37,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -349,15 +349,127 @@ class Settings(BaseSettings):
         description="Default password for all test users",
     )
 
-    # Nested Configuration Objects
-    browser: BrowserConfig = Field(
-        default_factory=BrowserConfig,
-        description="Browser configuration settings",
+    # Flat Browser Configuration Fields
+    browser: BrowserConfig | str | BrowserType = Field(
+        default="chromium",
+        description="Browser engine to use for testing",
     )
 
-    test: TestConfig = Field(
-        default_factory=TestConfig,
-        description="Test execution configuration settings",
+    headless: bool = Field(
+        default=True,
+        description="Run browser in headless mode (no visible UI)",
+    )
+
+    viewport_width: int = Field(
+        default=1920,
+        ge=320,
+        le=3840,
+        description="Browser viewport width in pixels",
+    )
+
+    viewport_height: int = Field(
+        default=1080,
+        ge=240,
+        le=2160,
+        description="Browser viewport height in pixels",
+    )
+
+    slow_mo: int = Field(
+        default=0,
+        ge=0,
+        le=5000,
+        description="Milliseconds to slow down operations (debugging)",
+    )
+
+    ignore_https_errors: bool = Field(
+        default=False,
+        description="Ignore HTTPS certificate errors",
+    )
+
+    device_name: str | None = Field(
+        default=None,
+        description="Device to emulate (e.g., 'iPhone 13', 'Pixel 5')",
+    )
+
+    mobile_emulation: bool = Field(
+        default=False,
+        description="Enable mobile device emulation",
+    )
+
+    user_agent: str | None = Field(
+        default=None,
+        description="Custom user agent string",
+    )
+
+    accept_downloads: bool = Field(
+        default=True,
+        description="Enable file downloads",
+    )
+
+    downloads_dir: str = Field(
+        default="downloads",
+        description="Directory for downloaded files",
+    )
+
+    # Flat Test Configuration Fields
+    page_load_timeout: int = Field(
+        default=30000,
+        ge=5000,
+        le=120000,
+        description="Maximum time to wait for page load (milliseconds)",
+    )
+
+    default_timeout: int = Field(
+        default=30000,
+        ge=5000,
+        le=120000,
+        description="Default timeout for assertions and waits (milliseconds)",
+    )
+
+    workers: int = Field(
+        default=4,
+        ge=1,
+        le=16,
+        description="Number of parallel workers for test execution",
+    )
+
+    max_failures: int = Field(
+        default=1,
+        ge=0,
+        description="Maximum number of test failures before stopping",
+    )
+
+    retries: int = Field(
+        default=1,
+        ge=0,
+        le=5,
+        description="Number of times to retry failed tests",
+    )
+
+    screenshot_on_failure: bool = Field(
+        default=True,
+        description="Capture screenshot when test fails",
+    )
+
+    trace_mode: TraceMode | str = Field(
+        default="retain-on-failure",
+        description="Playwright trace recording mode",
+    )
+
+    video_mode: VideoMode | str = Field(
+        default="retain-on-failure",
+        description="Video recording mode",
+    )
+
+    # Nested Configuration Objects (will be initialized in validators)
+    browser_obj: BrowserConfig | None = Field(
+        default=None,
+        exclude=True,
+    )
+
+    test_obj: TestConfig | None = Field(
+        default=None,
+        exclude=True,
     )
 
     # Logging Configuration
@@ -501,6 +613,92 @@ class Settings(BaseSettings):
             raise ValueError(f"Log level must be one of: {', '.join(valid_levels)}")
         return v_upper
 
+    @model_validator(mode="after")
+    def initialize_nested_configs(self) -> "Settings":
+        """
+        Initialize nested configuration objects after model validation.
+        """
+        # Convert browser string to BrowserType enum if needed
+        browser_val = self.browser
+        if isinstance(browser_val, str):
+            browser_val = BrowserType(browser_val)
+        elif isinstance(browser_val, BrowserConfig):
+            browser_val = browser_val.browser
+        
+        # Convert trace_mode and video_mode if needed
+        trace_val = self.trace_mode
+        if isinstance(trace_val, str):
+            trace_val = TraceMode(trace_val)
+        
+        video_val = self.video_mode
+        if isinstance(video_val, str):
+            video_val = VideoMode(video_val)
+        
+        # Create BrowserConfig - note: we don't assign to self.browser
+        # We keep the browser field as a string and use browser_obj property
+        self.browser_obj = BrowserConfig(
+            browser=browser_val,
+            headless=self.headless,
+            viewport_width=self.viewport_width,
+            viewport_height=self.viewport_height,
+            slow_mo=self.slow_mo,
+            device_name=self.device_name,
+            mobile_emulation=self.mobile_emulation,
+            user_agent=self.user_agent,
+            accept_downloads=self.accept_downloads,
+            downloads_dir=self.downloads_dir,
+            ignore_https_errors=self.ignore_https_errors,
+        )
+        
+        # Create TestConfig
+        self.test_obj = TestConfig(
+            page_load_timeout=self.page_load_timeout,
+            default_timeout=self.default_timeout,
+            workers=self.workers,
+            max_failures=self.max_failures,
+            retries=self.retries,
+            screenshot_on_failure=self.screenshot_on_failure,
+            trace_mode=trace_val,
+            video_mode=video_val,
+        )
+        
+        return self
+    
+    @property
+    def browser_config(self) -> BrowserConfig:
+        """Get the browser configuration object."""
+        if self.browser_obj is None:
+            self.browser_obj = BrowserConfig()
+        return self.browser_obj
+    
+    @property
+    def test_config(self) -> TestConfig:
+        """Get the test configuration object."""
+        if self.test_obj is None:
+            self.test_obj = TestConfig()
+        return self.test_obj
+    
+    def __getattr__(self, name: str) -> Any:
+        """
+        Override __getattr__ to handle browser and test attribute access.
+        This allows settings.browser and settings.test to return the config objects.
+        """
+        if name == 'browser':
+            return self.browser_config
+        elif name == 'test':
+            return self.test_config
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+    
+    def __getattribute__(self, name: str) -> Any:
+        """
+        Override __getattribute__ to intercept browser and test access.
+        """
+        if name == 'browser':
+            return super().__getattribute__('browser_config')
+        elif name == 'test':
+            return super().__getattribute__('test_config')
+        return super().__getattribute__(name)
+
     def model_post_init(self, __context: Any) -> None:
         """
         Post-initialization hook to create required directories.
@@ -518,7 +716,7 @@ class Settings(BaseSettings):
         self.reports_dir.mkdir(parents=True, exist_ok=True)
 
         # Create downloads directory
-        downloads_path = self.project_root / self.browser.downloads_dir
+        downloads_path = self.project_root / self.browser_config.downloads_dir
         downloads_path.mkdir(parents=True, exist_ok=True)
 
 
