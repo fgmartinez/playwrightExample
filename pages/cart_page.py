@@ -76,24 +76,14 @@ class CartPage(BasePage):
     # ========================================================================
 
     async def proceed_to_checkout(self) -> None:
-        """
-        Click the checkout button to proceed to checkout.
-
-        Example:
-            >>> await cart_page.proceed_to_checkout()
-        """
+        """Click the checkout button to proceed to checkout."""
         logger.info("Proceeding to checkout")
-        await self.click(self.checkout_button)
+        await self.page.locator(self.checkout_button).click()
 
     async def continue_shopping(self) -> None:
-        """
-        Click continue shopping button to return to products page.
-
-        Example:
-            >>> await cart_page.continue_shopping()
-        """
+        """Click continue shopping button to return to products page."""
         logger.info("Continuing shopping")
-        await self.click(self.continue_shopping_button)
+        await self.page.locator(self.continue_shopping_button).click()
 
     # ========================================================================
     # Cart Item Operations
@@ -105,11 +95,6 @@ class CartPage(BasePage):
 
         Returns:
             list[str]: List of item names
-
-        Example:
-            >>> items = await cart_page.get_cart_item_names()
-            >>> print(items)
-            ['Sauce Labs Backpack', 'Sauce Labs Bike Light']
         """
         elements = await self.page.locator(self.item_name).all()
         names = [await elem.text_content() for elem in elements]
@@ -123,12 +108,8 @@ class CartPage(BasePage):
 
         Returns:
             int: Number of items in cart
-
-        Example:
-            >>> count = await cart_page.get_cart_item_count()
-            >>> assert count > 0
         """
-        count = await self.get_elements_count(self.cart_items)
+        count = await self.page.locator(self.cart_items).count()
         logger.debug(f"Cart item count: {count}")
         return count
 
@@ -138,10 +119,6 @@ class CartPage(BasePage):
 
         Returns:
             bool: True if cart has no items
-
-        Example:
-            >>> if await cart_page.is_cart_empty():
-            >>>     print("Cart is empty")
         """
         count = await self.get_cart_item_count()
         return count == 0
@@ -155,10 +132,6 @@ class CartPage(BasePage):
 
         Returns:
             dict[str, str]: Item details (name, description, price, quantity)
-
-        Example:
-            >>> details = await cart_page.get_item_details("Sauce Labs Backpack")
-            >>> print(details['price'])
         """
         cart_item = self.page.locator(self.cart_items).filter(has_text=item_name).first
 
@@ -180,9 +153,6 @@ class CartPage(BasePage):
 
         Args:
             item_name: Name of the item to remove
-
-        Example:
-            >>> await cart_page.remove_item("Sauce Labs Backpack")
         """
         logger.info(f"Removing item from cart: {item_name}")
         cart_item = self.page.locator(self.cart_items).filter(has_text=item_name).first
@@ -190,13 +160,7 @@ class CartPage(BasePage):
         await remove_btn.click()
 
     async def remove_all_items(self) -> None:
-        """
-        Remove all items from the cart.
-
-        Example:
-            >>> await cart_page.remove_all_items()
-            >>> assert await cart_page.is_cart_empty()
-        """
+        """Remove all items from the cart."""
         logger.info("Removing all items from cart")
         item_names = await self.get_cart_item_names()
         for item_name in item_names:
@@ -208,10 +172,6 @@ class CartPage(BasePage):
 
         Returns:
             list[float]: List of item prices
-
-        Example:
-            >>> prices = await cart_page.get_cart_item_prices()
-            >>> total = sum(prices)
         """
         elements = await self.page.locator(self.item_price).all()
         price_texts = [await elem.text_content() for elem in elements]
@@ -230,10 +190,6 @@ class CartPage(BasePage):
 
         Returns:
             float: Total price of all items
-
-        Example:
-            >>> total = await cart_page.calculate_items_total()
-            >>> print(f"Total: ${total}")
         """
         prices = await self.get_cart_item_prices()
         total = sum(prices)
@@ -250,14 +206,10 @@ class CartPage(BasePage):
 
         Returns:
             bool: True if page is loaded
-
-        Example:
-            >>> await cart_page.navigate()
-            >>> assert await cart_page.is_page_loaded()
         """
         try:
-            await self.wait_for_selector(self.page_title, state="visible", timeout=5000)
-            await self.wait_for_selector(self.checkout_button, state="visible", timeout=5000)
+            await self.page.locator(self.page_title).wait_for(state="visible", timeout=5000)
+            await self.page.locator(self.checkout_button).wait_for(state="visible", timeout=5000)
             logger.debug("Cart page fully loaded")
             return True
         except Exception as e:
@@ -273,10 +225,6 @@ class CartPage(BasePage):
 
         Returns:
             bool: True if item is in cart
-
-        Example:
-            >>> if await cart_page.is_item_in_cart("Sauce Labs Backpack"):
-            >>>     print("Backpack is in cart")
         """
         items = await self.get_cart_item_names()
         return item_name in items
@@ -291,9 +239,6 @@ class CartPage(BasePage):
 
         Raises:
             AssertionError: If cart page is not displayed
-
-        Example:
-            >>> await cart_page.assert_cart_page_displayed()
         """
         await self.assert_element_visible(self.page_title)
         await self.assert_text_content(self.page_title, "Your Cart")
@@ -308,9 +253,6 @@ class CartPage(BasePage):
 
         Raises:
             AssertionError: If count doesn't match
-
-        Example:
-            >>> await cart_page.assert_item_count(2)
         """
         actual_count = await self.get_cart_item_count()
         assert actual_count == expected_count, (
@@ -328,9 +270,6 @@ class CartPage(BasePage):
 
         Raises:
             AssertionError: If item is not in cart
-
-        Example:
-            >>> await cart_page.assert_item_in_cart("Sauce Labs Backpack")
         """
         assert await self.is_item_in_cart(item_name), (
             f"Item '{item_name}' should be in cart"
