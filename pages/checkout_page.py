@@ -89,12 +89,9 @@ class CheckoutInformationPage(BasePage):
 
         Args:
             first_name: Customer's first name
-
-        Example:
-            >>> await checkout_info.enter_first_name("John")
         """
         logger.debug(f"Entering first name: {first_name}")
-        await self.fill(self.first_name_input, first_name)
+        await self.page.locator(self.first_name_input).fill(first_name)
 
     async def enter_last_name(self, last_name: str) -> None:
         """
@@ -102,12 +99,9 @@ class CheckoutInformationPage(BasePage):
 
         Args:
             last_name: Customer's last name
-
-        Example:
-            >>> await checkout_info.enter_last_name("Doe")
         """
         logger.debug(f"Entering last name: {last_name}")
-        await self.fill(self.last_name_input, last_name)
+        await self.page.locator(self.last_name_input).fill(last_name)
 
     async def enter_zip_code(self, zip_code: str) -> None:
         """
@@ -115,12 +109,9 @@ class CheckoutInformationPage(BasePage):
 
         Args:
             zip_code: Postal/zip code
-
-        Example:
-            >>> await checkout_info.enter_zip_code("12345")
         """
         logger.debug(f"Entering zip code: {zip_code}")
-        await self.fill(self.zip_code_input, zip_code)
+        await self.page.locator(self.zip_code_input).fill(zip_code)
 
     async def fill_information(
         self,
@@ -135,9 +126,6 @@ class CheckoutInformationPage(BasePage):
             first_name: Customer's first name
             last_name: Customer's last name
             zip_code: Postal/zip code
-
-        Example:
-            >>> await checkout_info.fill_information("John", "Doe", "12345")
         """
         logger.info("Filling checkout information")
         await self.enter_first_name(first_name)
@@ -145,24 +133,14 @@ class CheckoutInformationPage(BasePage):
         await self.enter_zip_code(zip_code)
 
     async def continue_to_overview(self) -> None:
-        """
-        Click continue button to proceed to checkout overview.
-
-        Example:
-            >>> await checkout_info.continue_to_overview()
-        """
+        """Click continue button to proceed to checkout overview."""
         logger.info("Continuing to checkout overview")
-        await self.click(self.continue_button)
+        await self.page.locator(self.continue_button).click()
 
     async def cancel_checkout(self) -> None:
-        """
-        Click cancel button to return to cart.
-
-        Example:
-            >>> await checkout_info.cancel_checkout()
-        """
+        """Click cancel button to return to cart."""
         logger.info("Canceling checkout")
-        await self.click(self.cancel_button)
+        await self.page.locator(self.cancel_button).click()
 
     # ========================================================================
     # Verification Methods
@@ -174,13 +152,10 @@ class CheckoutInformationPage(BasePage):
 
         Returns:
             bool: True if page is loaded
-
-        Example:
-            >>> assert await checkout_info.is_page_loaded()
         """
         try:
-            await self.wait_for_selector(self.page_title, state="visible", timeout=5000)
-            await self.wait_for_selector(self.first_name_input, state="visible", timeout=5000)
+            await self.page.locator(self.page_title).wait_for(state="visible", timeout=5000)
+            await self.page.locator(self.first_name_input).wait_for(state="visible", timeout=5000)
             logger.debug("Checkout information page loaded")
             return True
         except Exception as e:
@@ -193,10 +168,6 @@ class CheckoutInformationPage(BasePage):
 
         Returns:
             bool: True if error is visible
-
-        Example:
-            >>> if await checkout_info.is_error_displayed():
-            >>>     error = await checkout_info.get_error_message()
         """
         return await self.is_visible(self.error_message)
 
@@ -206,25 +177,16 @@ class CheckoutInformationPage(BasePage):
 
         Returns:
             str: Error message text
-
-        Example:
-            >>> error = await checkout_info.get_error_message()
-            >>> assert "required" in error.lower()
         """
         if await self.is_error_displayed():
             return await self.get_text(self.error_message)
         return ""
 
     async def close_error_message(self) -> None:
-        """
-        Close the error message.
-
-        Example:
-            >>> await checkout_info.close_error_message()
-        """
+        """Close the error message."""
         if await self.is_error_displayed():
             logger.debug("Closing error message")
-            await self.click(self.error_button)
+            await self.page.locator(self.error_button).click()
 
     # ========================================================================
     # Assertions
@@ -236,9 +198,6 @@ class CheckoutInformationPage(BasePage):
 
         Raises:
             AssertionError: If page is not displayed
-
-        Example:
-            >>> await checkout_info.assert_checkout_info_page_displayed()
         """
         await self.assert_element_visible(self.page_title)
         await self.assert_text_content(self.page_title, "Checkout: Your Information")
@@ -299,9 +258,6 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             list[str]: List of item names
-
-        Example:
-            >>> items = await overview.get_order_item_names()
         """
         elements = await self.page.locator(self.item_name).all()
         names = [await elem.text_content() for elem in elements]
@@ -313,9 +269,6 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             float: Subtotal amount
-
-        Example:
-            >>> subtotal = await overview.get_subtotal()
         """
         text = await self.get_text(self.subtotal)
         # Format: "Item total: $29.99"
@@ -328,9 +281,6 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             float: Tax amount
-
-        Example:
-            >>> tax = await overview.get_tax()
         """
         text = await self.get_text(self.tax)
         # Format: "Tax: $2.40"
@@ -343,9 +293,6 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             float: Total amount
-
-        Example:
-            >>> total = await overview.get_total()
         """
         text = await self.get_text(self.total)
         # Format: "Total: $32.39"
@@ -358,9 +305,6 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             str: Payment information
-
-        Example:
-            >>> payment = await overview.get_payment_info()
         """
         return await self.get_text(self.payment_info)
 
@@ -370,9 +314,6 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             str: Shipping information
-
-        Example:
-            >>> shipping = await overview.get_shipping_info()
         """
         return await self.get_text(self.shipping_info)
 
@@ -381,24 +322,14 @@ class CheckoutOverviewPage(BasePage):
     # ========================================================================
 
     async def finish_checkout(self) -> None:
-        """
-        Click finish button to complete the order.
-
-        Example:
-            >>> await overview.finish_checkout()
-        """
+        """Click finish button to complete the order."""
         logger.info("Finishing checkout")
-        await self.click(self.finish_button)
+        await self.page.locator(self.finish_button).click()
 
     async def cancel_checkout(self) -> None:
-        """
-        Click cancel button to return to products page.
-
-        Example:
-            >>> await overview.cancel_checkout()
-        """
+        """Click cancel button to return to products page."""
         logger.info("Canceling checkout")
-        await self.click(self.cancel_button)
+        await self.page.locator(self.cancel_button).click()
 
     # ========================================================================
     # Verification Methods
@@ -410,13 +341,10 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             bool: True if page is loaded
-
-        Example:
-            >>> assert await overview.is_page_loaded()
         """
         try:
-            await self.wait_for_selector(self.page_title, state="visible", timeout=5000)
-            await self.wait_for_selector(self.finish_button, state="visible", timeout=5000)
+            await self.page.locator(self.page_title).wait_for(state="visible", timeout=5000)
+            await self.page.locator(self.finish_button).wait_for(state="visible", timeout=5000)
             logger.debug("Checkout overview page loaded")
             return True
         except Exception as e:
@@ -429,9 +357,6 @@ class CheckoutOverviewPage(BasePage):
 
         Returns:
             bool: True if calculation is correct
-
-        Example:
-            >>> assert await overview.verify_total_calculation()
         """
         subtotal = await self.get_subtotal()
         tax = await self.get_tax()
@@ -461,9 +386,6 @@ class CheckoutOverviewPage(BasePage):
 
         Raises:
             AssertionError: If page is not displayed
-
-        Example:
-            >>> await overview.assert_checkout_overview_page_displayed()
         """
         await self.assert_element_visible(self.page_title)
         await self.assert_text_content(self.page_title, "Checkout: Overview")
@@ -507,14 +429,9 @@ class CheckoutCompletePage(BasePage):
     # ========================================================================
 
     async def go_back_to_products(self) -> None:
-        """
-        Click back home button to return to products page.
-
-        Example:
-            >>> await complete.go_back_to_products()
-        """
+        """Click back home button to return to products page."""
         logger.info("Returning to products page")
-        await self.click(self.back_home_button)
+        await self.page.locator(self.back_home_button).click()
 
     # ========================================================================
     # Verification Methods
@@ -526,13 +443,10 @@ class CheckoutCompletePage(BasePage):
 
         Returns:
             bool: True if page is loaded
-
-        Example:
-            >>> assert await complete.is_page_loaded()
         """
         try:
-            await self.wait_for_selector(self.page_title, state="visible", timeout=5000)
-            await self.wait_for_selector(self.complete_header, state="visible", timeout=5000)
+            await self.page.locator(self.page_title).wait_for(state="visible", timeout=5000)
+            await self.page.locator(self.complete_header).wait_for(state="visible", timeout=5000)
             logger.debug("Checkout complete page loaded")
             return True
         except Exception as e:
@@ -545,9 +459,6 @@ class CheckoutCompletePage(BasePage):
 
         Returns:
             bool: True if success message is displayed
-
-        Example:
-            >>> assert await complete.is_order_complete()
         """
         try:
             header_text = await self.get_text(self.complete_header)
@@ -561,11 +472,6 @@ class CheckoutCompletePage(BasePage):
 
         Returns:
             str: Confirmation header text
-
-        Example:
-            >>> header = await complete.get_confirmation_header()
-            >>> print(header)
-            'Thank you for your order!'
         """
         return await self.get_text(self.complete_header)
 
@@ -575,9 +481,6 @@ class CheckoutCompletePage(BasePage):
 
         Returns:
             str: Confirmation message
-
-        Example:
-            >>> message = await complete.get_confirmation_message()
         """
         return await self.get_text(self.complete_text)
 
@@ -591,9 +494,6 @@ class CheckoutCompletePage(BasePage):
 
         Raises:
             AssertionError: If page is not displayed
-
-        Example:
-            >>> await complete.assert_checkout_complete_page_displayed()
         """
         await self.assert_element_visible(self.page_title)
         await self.assert_text_content(self.page_title, "Checkout: Complete!")
@@ -605,9 +505,6 @@ class CheckoutCompletePage(BasePage):
 
         Raises:
             AssertionError: If order was not successful
-
-        Example:
-            >>> await complete.assert_order_successful()
         """
         assert await self.is_order_complete(), "Order should be completed successfully"
         await self.assert_element_visible(self.complete_header)

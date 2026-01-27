@@ -24,7 +24,7 @@ Created: 2026-01-23
 ============================================================================
 """
 
-from playwright.async_api import Locator, Page
+from playwright.async_api import Page
 
 from pages.base_page import BasePage
 from utils.exceptions import ElementNotFoundError
@@ -85,36 +85,21 @@ class ProductsPage(BasePage):
     # ========================================================================
 
     async def navigate_to_cart(self) -> None:
-        """
-        Navigate to the shopping cart page.
-
-        Example:
-            >>> await products_page.navigate_to_cart()
-        """
+        """Navigate to the shopping cart page."""
         logger.info("Navigating to cart")
-        await self.click(self.cart_link)
+        await self.page.locator(self.cart_link).click()
 
     async def open_menu(self) -> None:
-        """
-        Open the hamburger menu.
-
-        Example:
-            >>> await products_page.open_menu()
-        """
+        """Open the hamburger menu."""
         logger.info("Opening menu")
-        await self.click(self.menu_button)
+        await self.page.locator(self.menu_button).click()
 
     async def logout(self) -> None:
-        """
-        Logout from the application.
-
-        Example:
-            >>> await products_page.logout()
-        """
+        """Logout from the application."""
         logger.info("Logging out")
         await self.open_menu()
-        await self.wait_for_selector(self.logout_link, state="visible")
-        await self.click(self.logout_link)
+        await self.page.locator(self.logout_link).wait_for(state="visible")
+        await self.page.locator(self.logout_link).click()
 
     # ========================================================================
     # Product Discovery
@@ -126,11 +111,6 @@ class ProductsPage(BasePage):
 
         Returns:
             list[str]: List of product names
-
-        Example:
-            >>> names = await products_page.get_all_product_names()
-            >>> print(names)
-            ['Sauce Labs Backpack', 'Sauce Labs Bike Light', ...]
         """
         elements = await self.page.locator(self.product_name).all()
         names = [await elem.text_content() for elem in elements]
@@ -144,11 +124,6 @@ class ProductsPage(BasePage):
 
         Returns:
             list[float]: List of product prices
-
-        Example:
-            >>> prices = await products_page.get_all_product_prices()
-            >>> print(prices)
-            [29.99, 9.99, 15.99, ...]
         """
         elements = await self.page.locator(self.product_price).all()
         price_texts = [await elem.text_content() for elem in elements]
@@ -156,7 +131,6 @@ class ProductsPage(BasePage):
         prices = []
         for price_text in price_texts:
             if price_text:
-                # Remove $ and convert to float
                 clean_price = price_text.strip().replace("$", "")
                 prices.append(float(clean_price))
 
@@ -169,12 +143,8 @@ class ProductsPage(BasePage):
 
         Returns:
             int: Number of products
-
-        Example:
-            >>> count = await products_page.get_product_count()
-            >>> assert count == 6
         """
-        count = await self.get_elements_count(self.product_items)
+        count = await self.page.locator(self.product_items).count()
         logger.debug(f"Product count: {count}")
         return count
 
@@ -190,14 +160,8 @@ class ProductsPage(BasePage):
 
         Raises:
             ElementNotFoundError: If product not found
-
-        Example:
-            >>> details = await products_page.get_product_details("Sauce Labs Backpack")
-            >>> print(details['price'])
-            '$29.99'
         """
         try:
-            # Find the product item containing this product name
             product_item = self.page.locator(self.product_items).filter(
                 has_text=product_name
             ).first
@@ -235,9 +199,6 @@ class ProductsPage(BasePage):
 
         Raises:
             ElementNotFoundError: If product not found
-
-        Example:
-            >>> await products_page.add_product_to_cart("Sauce Labs Backpack")
         """
         logger.info(f"Adding product to cart: {product_name}")
         try:
@@ -265,9 +226,6 @@ class ProductsPage(BasePage):
 
         Raises:
             ElementNotFoundError: If product not found or not in cart
-
-        Example:
-            >>> await products_page.remove_product_from_cart("Sauce Labs Backpack")
         """
         logger.info(f"Removing product from cart: {product_name}")
         try:
@@ -292,24 +250,13 @@ class ProductsPage(BasePage):
 
         Args:
             product_names: List of product names to add
-
-        Example:
-            >>> await products_page.add_multiple_products_to_cart([
-            >>>     "Sauce Labs Backpack",
-            >>>     "Sauce Labs Bike Light"
-            >>> ])
         """
         logger.info(f"Adding {len(product_names)} products to cart")
         for product_name in product_names:
             await self.add_product_to_cart(product_name)
 
     async def add_all_products_to_cart(self) -> None:
-        """
-        Add all available products to the cart.
-
-        Example:
-            >>> await products_page.add_all_products_to_cart()
-        """
+        """Add all available products to the cart."""
         logger.info("Adding all products to cart")
         product_names = await self.get_all_product_names()
         await self.add_multiple_products_to_cart(product_names)
@@ -323,9 +270,6 @@ class ProductsPage(BasePage):
 
         Returns:
             bool: True if product is in cart (Remove button is visible)
-
-        Example:
-            >>> in_cart = await products_page.is_product_in_cart("Sauce Labs Backpack")
         """
         try:
             product_item = self.page.locator(self.product_items).filter(
@@ -351,10 +295,6 @@ class ProductsPage(BasePage):
 
         Returns:
             int: Number of items in cart (0 if badge not visible)
-
-        Example:
-            >>> count = await products_page.get_cart_badge_count()
-            >>> assert count == 2
         """
         try:
             if await self.is_visible(self.cart_badge):
@@ -375,9 +315,6 @@ class ProductsPage(BasePage):
 
         Returns:
             bool: True if cart badge is visible
-
-        Example:
-            >>> visible = await products_page.is_cart_badge_visible()
         """
         return await self.is_visible(self.cart_badge)
 
@@ -395,15 +332,11 @@ class ProductsPage(BasePage):
                 - "za": Name (Z to A)
                 - "lohi": Price (low to high)
                 - "hilo": Price (high to low)
-
-        Example:
-            >>> await products_page.sort_products("lohi")
         """
         logger.info(f"Sorting products by: {sort_option}")
-        await self.select_option(self.product_sort_dropdown, sort_option)
-
+        await self.page.locator(self.product_sort_dropdown).select_option(sort_option)
         # Wait for sort to take effect
-        await self.wait_for_timeout(500)
+        await self.page.wait_for_timeout(500)
 
     async def get_current_sort_option(self) -> str:
         """
@@ -411,11 +344,8 @@ class ProductsPage(BasePage):
 
         Returns:
             str: Current sort option value
-
-        Example:
-            >>> option = await products_page.get_current_sort_option()
         """
-        option = await self.get_attribute(self.product_sort_dropdown, "value")
+        option = await self.page.locator(self.product_sort_dropdown).get_attribute("value")
         return option or "az"
 
     # ========================================================================
@@ -428,14 +358,10 @@ class ProductsPage(BasePage):
 
         Returns:
             bool: True if page is loaded
-
-        Example:
-            >>> await products_page.navigate()
-            >>> assert await products_page.is_page_loaded()
         """
         try:
-            await self.wait_for_selector(self.page_title, state="visible", timeout=5000)
-            await self.wait_for_selector(self.product_items, state="visible", timeout=5000)
+            await self.page.locator(self.page_title).wait_for(state="visible", timeout=5000)
+            await self.page.locator(self.product_items).first.wait_for(state="visible", timeout=5000)
             logger.debug("Products page fully loaded")
             return True
         except Exception as e:
@@ -448,10 +374,6 @@ class ProductsPage(BasePage):
 
         Returns:
             bool: True if sorted correctly
-
-        Example:
-            >>> await products_page.sort_products("az")
-            >>> assert await products_page.verify_products_sorted_alphabetically_asc()
         """
         names = await self.get_all_product_names()
         sorted_names = sorted(names)
@@ -470,10 +392,6 @@ class ProductsPage(BasePage):
 
         Returns:
             bool: True if sorted correctly
-
-        Example:
-            >>> await products_page.sort_products("za")
-            >>> assert await products_page.verify_products_sorted_alphabetically_desc()
         """
         names = await self.get_all_product_names()
         sorted_names = sorted(names, reverse=True)
@@ -482,7 +400,7 @@ class ProductsPage(BasePage):
         if is_sorted:
             logger.debug("Products are sorted alphabetically (Z-A)")
         else:
-            logger.warning(f"Products NOT sorted alphabetically (Z-A)")
+            logger.warning("Products NOT sorted alphabetically (Z-A)")
 
         return is_sorted
 
@@ -492,10 +410,6 @@ class ProductsPage(BasePage):
 
         Returns:
             bool: True if sorted correctly
-
-        Example:
-            >>> await products_page.sort_products("lohi")
-            >>> assert await products_page.verify_products_sorted_by_price_asc()
         """
         prices = await self.get_all_product_prices()
         sorted_prices = sorted(prices)
@@ -514,10 +428,6 @@ class ProductsPage(BasePage):
 
         Returns:
             bool: True if sorted correctly
-
-        Example:
-            >>> await products_page.sort_products("hilo")
-            >>> assert await products_page.verify_products_sorted_by_price_desc()
         """
         prices = await self.get_all_product_prices()
         sorted_prices = sorted(prices, reverse=True)
@@ -526,7 +436,7 @@ class ProductsPage(BasePage):
         if is_sorted:
             logger.debug("Products are sorted by price (high to low)")
         else:
-            logger.warning(f"Products NOT sorted by price (high to low)")
+            logger.warning("Products NOT sorted by price (high to low)")
 
         return is_sorted
 
@@ -540,9 +450,6 @@ class ProductsPage(BasePage):
 
         Raises:
             AssertionError: If products page is not displayed
-
-        Example:
-            >>> await products_page.assert_products_page_displayed()
         """
         await self.assert_element_visible(self.page_title)
         await self.assert_text_content(self.page_title, "Products")
@@ -557,9 +464,6 @@ class ProductsPage(BasePage):
 
         Raises:
             AssertionError: If count doesn't match
-
-        Example:
-            >>> await products_page.assert_cart_badge_count(2)
         """
         actual_count = await self.get_cart_badge_count()
         assert actual_count == expected_count, (
@@ -577,9 +481,6 @@ class ProductsPage(BasePage):
 
         Raises:
             AssertionError: If product is not in cart
-
-        Example:
-            >>> await products_page.assert_product_in_cart("Sauce Labs Backpack")
         """
         is_in_cart = await self.is_product_in_cart(product_name)
         assert is_in_cart, f"Product '{product_name}' should be in cart"

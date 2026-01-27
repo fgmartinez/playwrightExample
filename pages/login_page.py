@@ -23,7 +23,7 @@ Created: 2026-01-23
 ============================================================================
 """
 
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
 from config import settings
 from pages.base_page import BasePage
@@ -66,11 +66,6 @@ class LoginPage(BasePage):
         self.error_message = '[data-test="error"]'
         self.error_button = '.error-button'
 
-        # Alternative selectors using IDs (fallback)
-        self.username_input_id = "#user-name"
-        self.password_input_id = "#password"
-        self.login_button_id = "#login-button"
-
         logger.debug("LoginPage initialized")
 
     # ========================================================================
@@ -83,12 +78,9 @@ class LoginPage(BasePage):
 
         Args:
             username: Username to enter
-
-        Example:
-            >>> await login_page.enter_username("standard_user")
         """
         logger.info(f"Entering username: {username}")
-        await self.fill(self.username_input, username)
+        await self.page.locator(self.username_input).fill(username)
 
     async def enter_password(self, password: str) -> None:
         """
@@ -96,22 +88,14 @@ class LoginPage(BasePage):
 
         Args:
             password: Password to enter (will be masked in logs)
-
-        Example:
-            >>> await login_page.enter_password("secret_sauce")
         """
         logger.info("Entering password: ****")
-        await self.fill(self.password_input, password)
+        await self.page.locator(self.password_input).fill(password)
 
     async def click_login_button(self) -> None:
-        """
-        Click the login button.
-
-        Example:
-            >>> await login_page.click_login_button()
-        """
+        """Click the login button."""
         logger.info("Clicking login button")
-        await self.click(self.login_button)
+        await self.page.locator(self.login_button).click()
 
     async def login(self, username: str, password: str) -> None:
         """
@@ -123,55 +107,28 @@ class LoginPage(BasePage):
         Args:
             username: Username to login with
             password: Password to login with
-
-        Example:
-            >>> await login_page.login("standard_user", "secret_sauce")
         """
         logger.info(f"Logging in with username: {username}")
         await self.enter_username(username)
         await self.enter_password(password)
         await self.click_login_button()
-
         # Wait a moment for the navigation/error to appear
         await self.page.wait_for_timeout(500)
 
     async def login_with_standard_user(self) -> None:
-        """
-        Login using the standard test user from configuration.
-
-        This is a convenience method for the most common test scenario.
-
-        Example:
-            >>> await login_page.login_with_standard_user()
-        """
+        """Login using the standard test user from configuration."""
         await self.login(settings.standard_user, settings.standard_password)
 
     async def login_with_locked_user(self) -> None:
-        """
-        Attempt login with locked out user (for negative testing).
-
-        Example:
-            >>> await login_page.login_with_locked_user()
-            >>> assert await login_page.is_error_displayed()
-        """
+        """Attempt login with locked out user (for negative testing)."""
         await self.login(settings.locked_out_user, settings.default_password)
 
     async def login_with_problem_user(self) -> None:
-        """
-        Login with problem user (user with UI issues).
-
-        Example:
-            >>> await login_page.login_with_problem_user()
-        """
+        """Login with problem user (user with UI issues)."""
         await self.login(settings.problem_user, settings.default_password)
 
     async def login_with_performance_glitch_user(self) -> None:
-        """
-        Login with performance glitch user (slow response times).
-
-        Example:
-            >>> await login_page.login_with_performance_glitch_user()
-        """
+        """Login with performance glitch user (slow response times)."""
         await self.login(
             settings.performance_glitch_user,
             settings.default_password,
@@ -187,14 +144,9 @@ class LoginPage(BasePage):
 
         Returns:
             bool: True if redirected to inventory page
-
-        Example:
-            >>> success = await login_page.is_login_successful()
-            >>> assert success, "Login failed"
         """
         try:
-            # Successful login redirects to inventory page
-            await self.wait_for_url("**/inventory.html", timeout=5000)
+            await self.page.wait_for_url("**/inventory.html", timeout=5000)
             logger.info("Login successful - redirected to inventory page")
             return True
         except Exception as e:
@@ -207,11 +159,6 @@ class LoginPage(BasePage):
 
         Returns:
             bool: True if error message is visible
-
-        Example:
-            >>> if await login_page.is_error_displayed():
-            >>>     error_text = await login_page.get_error_message()
-            >>>     print(f"Error: {error_text}")
         """
         return await self.is_visible(self.error_message)
 
@@ -221,10 +168,6 @@ class LoginPage(BasePage):
 
         Returns:
             str: Error message text
-
-        Example:
-            >>> error = await login_page.get_error_message()
-            >>> assert "locked out" in error.lower()
         """
         if await self.is_error_displayed():
             error_text = await self.get_text(self.error_message)
@@ -233,16 +176,10 @@ class LoginPage(BasePage):
         return ""
 
     async def close_error_message(self) -> None:
-        """
-        Close the error message by clicking the X button.
-
-        Example:
-            >>> await login_page.close_error_message()
-            >>> assert not await login_page.is_error_displayed()
-        """
+        """Close the error message by clicking the X button."""
         if await self.is_error_displayed():
             logger.info("Closing error message")
-            await self.click(self.error_button)
+            await self.page.locator(self.error_button).click()
 
     async def is_login_button_enabled(self) -> bool:
         """
@@ -250,43 +187,25 @@ class LoginPage(BasePage):
 
         Returns:
             bool: True if login button is enabled
-
-        Example:
-            >>> enabled = await login_page.is_login_button_enabled()
         """
-        return await self.is_enabled(self.login_button)
+        return await self.page.locator(self.login_button).is_enabled()
 
     # ========================================================================
     # Field Validation
     # ========================================================================
 
     async def clear_username(self) -> None:
-        """
-        Clear the username field.
-
-        Example:
-            >>> await login_page.clear_username()
-        """
+        """Clear the username field."""
         logger.debug("Clearing username field")
-        await self.page.fill(self.username_input, "")
+        await self.page.locator(self.username_input).fill("")
 
     async def clear_password(self) -> None:
-        """
-        Clear the password field.
-
-        Example:
-            >>> await login_page.clear_password()
-        """
+        """Clear the password field."""
         logger.debug("Clearing password field")
-        await self.page.fill(self.password_input, "")
+        await self.page.locator(self.password_input).fill("")
 
     async def clear_all_fields(self) -> None:
-        """
-        Clear both username and password fields.
-
-        Example:
-            >>> await login_page.clear_all_fields()
-        """
+        """Clear both username and password fields."""
         await self.clear_username()
         await self.clear_password()
 
@@ -296,11 +215,8 @@ class LoginPage(BasePage):
 
         Returns:
             str: Current username field value
-
-        Example:
-            >>> username = await login_page.get_username_value()
         """
-        value = await self.get_attribute(self.username_input, "value")
+        value = await self.page.locator(self.username_input).get_attribute("value")
         return value or ""
 
     async def get_password_value(self) -> str:
@@ -309,11 +225,8 @@ class LoginPage(BasePage):
 
         Returns:
             str: Current password field value
-
-        Example:
-            >>> password = await login_page.get_password_value()
         """
-        value = await self.get_attribute(self.password_input, "value")
+        value = await self.page.locator(self.password_input).get_attribute("value")
         return value or ""
 
     # ========================================================================
@@ -326,15 +239,11 @@ class LoginPage(BasePage):
 
         Returns:
             bool: True if all key elements are present
-
-        Example:
-            >>> await login_page.navigate()
-            >>> assert await login_page.is_page_loaded()
         """
         try:
-            await self.wait_for_selector(self.username_input, state="visible", timeout=5000)
-            await self.wait_for_selector(self.password_input, state="visible", timeout=5000)
-            await self.wait_for_selector(self.login_button, state="visible", timeout=5000)
+            await self.page.locator(self.username_input).wait_for(state="visible", timeout=5000)
+            await self.page.locator(self.password_input).wait_for(state="visible", timeout=5000)
+            await self.page.locator(self.login_button).wait_for(state="visible", timeout=5000)
             logger.debug("Login page fully loaded")
             return True
         except Exception as e:
@@ -349,15 +258,8 @@ class LoginPage(BasePage):
 
         Returns:
             dict[str, list[str]]: Dictionary with 'usernames' and 'password'
-
-        Example:
-            >>> credentials = await login_page.get_login_credentials_list()
-            >>> print(credentials['usernames'])
-            ['standard_user', 'locked_out_user', ...]
         """
-        # This is specific to SauceDemo which shows credentials on the page
         try:
-            # Get the credentials text from the page
             credentials_div = "#login_credentials"
             password_div = ".login_password"
 
@@ -393,10 +295,6 @@ class LoginPage(BasePage):
 
         Raises:
             AssertionError: If login page elements are not visible
-
-        Example:
-            >>> await login_page.navigate()
-            >>> await login_page.assert_login_page_displayed()
         """
         await self.assert_element_visible(self.username_input)
         await self.assert_element_visible(self.password_input)
@@ -412,9 +310,6 @@ class LoginPage(BasePage):
 
         Raises:
             AssertionError: If error message doesn't contain expected text
-
-        Example:
-            >>> await login_page.assert_error_message_contains("locked out")
         """
         error_text = await self.get_error_message()
         assert expected_text.lower() in error_text.lower(), (
