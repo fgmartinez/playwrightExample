@@ -23,7 +23,7 @@ from playwright.async_api import Page
 from pages import (
     CartPage,
     CheckoutCompletePage,
-    CheckoutInformationPage,
+    CheckoutInfoPage,
     CheckoutOverviewPage,
     LoginPage,
     ProductsPage,
@@ -83,32 +83,32 @@ class TestCompletePurchaseFlow:
 
         # Step 4: Proceed to checkout
         await cart_page.proceed_to_checkout()
-        checkout_info = CheckoutInformationPage(page)
-        assert await checkout_info.is_page_loaded(), "Checkout info page should load"
+        checkout_info = CheckoutInfoPage(page)
+        assert await checkout_info.is_loaded(), "Checkout info page should load"
         logger.info("✓ Step 4: Proceeded to checkout")
 
         # Step 5: Fill checkout information
         user_data = generate_test_user_data()
-        await checkout_info.fill_information(
+        await checkout_info.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
-        await checkout_info.continue_to_overview()
+        await checkout_info.continue_checkout()
         logger.info("✓ Step 5: Filled checkout information")
 
         # Step 6: Review and complete order
         overview = CheckoutOverviewPage(page)
-        assert await overview.is_page_loaded(), "Overview page should load"
+        assert await overview.is_loaded(), "Overview page should load"
 
-        order_items = await overview.get_order_item_names()
+        order_items = await overview.get_item_names()
         assert product_to_buy in order_items, "Product should be in order"
 
         assert await overview.verify_total_calculation(), "Total calculation should be correct"
         logger.info("✓ Step 6: Reviewed order, calculations correct")
 
         # Step 7: Finish checkout
-        await overview.finish_checkout()
+        await overview.finish()
 
         # Step 8: Verify completion
         complete = CheckoutCompletePage(page)
@@ -158,23 +158,23 @@ class TestCompletePurchaseFlow:
         # Checkout
         await cart_page.proceed_to_checkout()
 
-        checkout_info = CheckoutInformationPage(page)
+        checkout_info = CheckoutInfoPage(page)
         user_data = generate_test_user_data()
-        await checkout_info.fill_information(
+        await checkout_info.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
-        await checkout_info.continue_to_overview()
+        await checkout_info.continue_checkout()
 
         # Verify order
         overview = CheckoutOverviewPage(page)
-        order_items = await overview.get_order_item_names()
+        order_items = await overview.get_item_names()
         assert len(order_items) == 3, "Order should contain 3 items"
         logger.info("✓ Order contains all products")
 
         # Complete
-        await overview.finish_checkout()
+        await overview.finish()
 
         complete = CheckoutCompletePage(page)
         assert await complete.is_order_complete(), "Order should be complete"
@@ -219,17 +219,17 @@ class TestCompletePurchaseFlow:
         cart_page = CartPage(page)
         await cart_page.proceed_to_checkout()
 
-        checkout_info = CheckoutInformationPage(page)
+        checkout_info = CheckoutInfoPage(page)
         user_data = generate_test_user_data()
-        await checkout_info.fill_information(
+        await checkout_info.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
-        await checkout_info.continue_to_overview()
+        await checkout_info.continue_checkout()
 
         overview = CheckoutOverviewPage(page)
-        await overview.finish_checkout()
+        await overview.finish()
 
         complete = CheckoutCompletePage(page)
         assert await complete.is_order_complete(), "Order should be complete"
@@ -273,22 +273,22 @@ class TestCompletePurchaseFlow:
         # Complete purchase
         await cart_page.proceed_to_checkout()
 
-        checkout_info = CheckoutInformationPage(page)
+        checkout_info = CheckoutInfoPage(page)
         user_data = generate_test_user_data()
-        await checkout_info.fill_information(
+        await checkout_info.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
-        await checkout_info.continue_to_overview()
+        await checkout_info.continue_checkout()
 
         overview = CheckoutOverviewPage(page)
-        order_items = await overview.get_order_item_names()
+        order_items = await overview.get_item_names()
         assert len(order_items) == 2, "Order should contain 2 items"
         assert item_to_remove not in order_items, "Removed item should not be in order"
         logger.info("✓ Order contains only selected items")
 
-        await overview.finish_checkout()
+        await overview.finish()
 
         complete = CheckoutCompletePage(page)
         assert await complete.is_order_complete(), "Order should be complete"
@@ -349,17 +349,17 @@ class TestCompletePurchaseFlow:
         await products_page.navigate_to_cart()
         await cart_page.proceed_to_checkout()
 
-        checkout_info = CheckoutInformationPage(page)
+        checkout_info = CheckoutInfoPage(page)
         user_data = generate_test_user_data()
-        await checkout_info.fill_information(
+        await checkout_info.fill_info(
             user_data["firstName"],
             user_data["lastName"],
             user_data["zipCode"],
         )
-        await checkout_info.continue_to_overview()
+        await checkout_info.continue_checkout()
 
         overview = CheckoutOverviewPage(page)
-        await overview.finish_checkout()
+        await overview.finish()
         logger.info("✓ Step 8: Completed checkout")
 
         # Step 9: Return to products
