@@ -272,8 +272,6 @@ async def wait_for_condition(
         >>>
         >>> await wait_for_condition(is_data_loaded, timeout=10000)
     """
-    from utils.exceptions import TimeoutError
-
     start_time = asyncio.get_event_loop().time()
     timeout_seconds = timeout / 1000
     poll_seconds = poll_interval / 1000
@@ -287,11 +285,7 @@ async def wait_for_condition(
 
         elapsed = asyncio.get_event_loop().time() - start_time
         if elapsed >= timeout_seconds:
-            raise TimeoutError(
-                error_message,
-                timeout=timeout,
-                elapsed=int(elapsed * 1000),
-            )
+            raise TimeoutError(error_message)
 
         await asyncio.sleep(poll_seconds)
 

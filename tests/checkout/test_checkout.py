@@ -1,19 +1,8 @@
 """
-============================================================================
 Checkout Tests
-============================================================================
-This module contains test cases for the complete checkout flow including
-customer information, order review, and order completion.
-
-Test Coverage:
-- Checkout information form
-- Order review and totals
-- Order completion
-- Validation and error handling
-
-Author: Your Name
-Created: 2026-01-23
-============================================================================
+==============
+Test cases for the complete checkout flow including customer information,
+order review, and order completion.
 """
 
 import pytest
@@ -38,18 +27,17 @@ async def checkout_info_page(page: Page) -> CheckoutInfoPage:
     """Fixture providing checkout information page with items in cart."""
     login_page = LoginPage(page)
     await login_page.navigate()
-    await login_page.login_with_standard_user()
+    await login_page.login_as_standard_user()
 
     products_page = ProductsPage(page)
     product_names = await products_page.get_all_product_names()
-    await products_page.add_multiple_products_to_cart(product_names[:2])
-    await products_page.navigate_to_cart()
+    await products_page.add_multiple_to_cart(product_names[:2])
+    await products_page.go_to_cart()
 
     cart_page = CartPage(page)
     await cart_page.proceed_to_checkout()
 
-    checkout_page = CheckoutInfoPage(page)
-    return checkout_page
+    return CheckoutInfoPage(page)
 
 
 @pytest.mark.checkout
@@ -65,8 +53,7 @@ class TestCheckoutInformation:
 
         assert await checkout_page.is_loaded(), "Checkout info page should load"
         await checkout_page.assert_displayed()
-
-        logger.info("✓ Checkout information page loaded")
+        logger.info("Checkout information page loaded")
 
     async def test_fill_valid_information(
         self, checkout_info_page: CheckoutInfoPage
@@ -83,10 +70,8 @@ class TestCheckoutInformation:
 
         await checkout_page.continue_checkout()
 
-        # Should navigate to overview page
         assert "/checkout-step-two.html" in checkout_page.current_url
-
-        logger.info("✓ Valid information accepted")
+        logger.info("Valid information accepted")
 
     async def test_empty_first_name_validation(
         self, checkout_info_page: CheckoutInfoPage
@@ -102,8 +87,7 @@ class TestCheckoutInformation:
         assert "first name" in error_message.lower(), (
             f"Error should mention first name, got: {error_message}"
         )
-
-        logger.info("✓ Empty first name validation works")
+        logger.info("Empty first name validation works")
 
     async def test_empty_last_name_validation(
         self, checkout_info_page: CheckoutInfoPage
@@ -119,8 +103,7 @@ class TestCheckoutInformation:
         assert "last name" in error_message.lower(), (
             f"Error should mention last name, got: {error_message}"
         )
-
-        logger.info("✓ Empty last name validation works")
+        logger.info("Empty last name validation works")
 
     async def test_empty_zip_code_validation(
         self, checkout_info_page: CheckoutInfoPage
@@ -136,8 +119,7 @@ class TestCheckoutInformation:
         assert "postal code" in error_message.lower(), (
             f"Error should mention postal code, got: {error_message}"
         )
-
-        logger.info("✓ Empty zip code validation works")
+        logger.info("Empty zip code validation works")
 
     async def test_cancel_checkout(
         self, checkout_info_page: CheckoutInfoPage
@@ -150,8 +132,7 @@ class TestCheckoutInformation:
         assert "/cart.html" in checkout_page.current_url, (
             "Should return to cart page"
         )
-
-        logger.info("✓ Cancel checkout works")
+        logger.info("Cancel checkout works")
 
 
 @pytest.mark.checkout
@@ -172,8 +153,7 @@ class TestCheckoutOverview:
         )
         await checkout_info_page.continue_checkout()
 
-        overview_page = CheckoutOverviewPage(checkout_info_page.page)
-        return overview_page
+        return CheckoutOverviewPage(checkout_info_page.page)
 
     async def test_checkout_overview_page_loads(
         self, checkout_overview_page: CheckoutOverviewPage
@@ -183,8 +163,7 @@ class TestCheckoutOverview:
 
         assert await overview_page.is_loaded(), "Overview page should load"
         await overview_page.assert_displayed()
-
-        logger.info("✓ Checkout overview page loaded")
+        logger.info("Checkout overview page loaded")
 
     async def test_order_items_displayed(
         self, checkout_overview_page: CheckoutOverviewPage
@@ -194,8 +173,7 @@ class TestCheckoutOverview:
 
         items = await overview_page.get_item_names()
         assert len(items) == 2, f"Should display 2 items, got: {len(items)}"
-
-        logger.info(f"✓ {len(items)} order items displayed")
+        logger.info(f"{len(items)} order items displayed")
 
     async def test_pricing_information_displayed(
         self, checkout_overview_page: CheckoutOverviewPage
@@ -210,8 +188,7 @@ class TestCheckoutOverview:
         assert subtotal > 0, "Subtotal should be positive"
         assert tax > 0, "Tax should be positive"
         assert total > 0, "Total should be positive"
-
-        logger.info(f"✓ Pricing displayed: Subtotal=${subtotal}, Tax=${tax}, Total=${total}")
+        logger.info(f"Pricing displayed: Subtotal=${subtotal}, Tax=${tax}, Total=${total}")
 
     async def test_total_calculation(
         self, checkout_overview_page: CheckoutOverviewPage
@@ -222,8 +199,7 @@ class TestCheckoutOverview:
         assert await overview_page.verify_total_calculation(), (
             "Total should equal subtotal + tax"
         )
-
-        logger.info("✓ Total calculation is correct")
+        logger.info("Total calculation is correct")
 
     async def test_payment_and_shipping_info(
         self, checkout_overview_page: CheckoutOverviewPage
@@ -236,8 +212,7 @@ class TestCheckoutOverview:
 
         assert len(payment_info) > 0, "Payment info should be displayed"
         assert len(shipping_info) > 0, "Shipping info should be displayed"
-
-        logger.info("✓ Payment and shipping info displayed")
+        logger.info("Payment and shipping info displayed")
 
 
 @pytest.mark.checkout
@@ -250,7 +225,6 @@ class TestCheckoutComplete:
         self, checkout_info_page: CheckoutInfoPage
     ) -> CheckoutCompletePage:
         """Complete entire checkout flow."""
-        # Fill information
         user_data = generate_test_user_data()
         await checkout_info_page.fill_info(
             user_data["firstName"],
@@ -259,13 +233,10 @@ class TestCheckoutComplete:
         )
         await checkout_info_page.continue_checkout()
 
-        # Finish checkout
         overview_page = CheckoutOverviewPage(checkout_info_page.page)
         await overview_page.finish()
 
-        # Return complete page
-        complete_page = CheckoutCompletePage(checkout_info_page.page)
-        return complete_page
+        return CheckoutCompletePage(checkout_info_page.page)
 
     async def test_checkout_complete_page_loads(
         self, complete_checkout: CheckoutCompletePage
@@ -275,8 +246,7 @@ class TestCheckoutComplete:
 
         assert await complete_page.is_loaded(), "Complete page should load"
         await complete_page.assert_displayed()
-
-        logger.info("✓ Checkout complete page loaded")
+        logger.info("Checkout complete page loaded")
 
     async def test_order_completion_success(
         self, complete_checkout: CheckoutCompletePage
@@ -286,8 +256,7 @@ class TestCheckoutComplete:
 
         assert await complete_page.is_order_complete(), "Order should be complete"
         await complete_page.assert_order_successful()
-
-        logger.info("✓ Order completed successfully")
+        logger.info("Order completed successfully")
 
     async def test_confirmation_messages(
         self, complete_checkout: CheckoutCompletePage
@@ -300,8 +269,7 @@ class TestCheckoutComplete:
 
         assert len(header) > 0, "Confirmation header should be displayed"
         assert len(message) > 0, "Confirmation message should be displayed"
-
-        logger.info(f"✓ Confirmation displayed: {header}")
+        logger.info(f"Confirmation displayed: {header}")
 
     async def test_return_to_products(
         self, complete_checkout: CheckoutCompletePage
@@ -314,5 +282,4 @@ class TestCheckoutComplete:
         assert "/inventory.html" in complete_page.current_url, (
             "Should return to products page"
         )
-
-        logger.info("✓ Successfully returned to products page")
+        logger.info("Successfully returned to products page")

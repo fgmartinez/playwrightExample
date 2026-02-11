@@ -67,6 +67,18 @@ class LoginPage(BasePage):
         """Login with performance glitch user (slow responses)."""
         await self.login(settings.performance_glitch_user, settings.default_password)
 
+    async def enter_username(self, username: str) -> None:
+        """Fill the username field."""
+        await self.username_input.fill(username)
+
+    async def enter_password(self, password: str) -> None:
+        """Fill the password field."""
+        await self.password_input.fill(password)
+
+    async def click_login_button(self) -> None:
+        """Click the login button."""
+        await self.login_button.click()
+
     async def clear_form(self) -> None:
         """Clear both username and password fields."""
         await self.username_input.clear()
@@ -100,6 +112,34 @@ class LoginPage(BasePage):
         if await self.has_error():
             return await self.get_text(self.error_container)
         return ""
+
+    async def get_username_value(self) -> str:
+        """Get current value of the username field."""
+        return await self.username_input.input_value()
+
+    async def get_password_value(self) -> str:
+        """Get current value of the password field."""
+        return await self.password_input.input_value()
+
+    async def is_login_button_enabled(self) -> bool:
+        """Check if the login button is enabled."""
+        return await self.login_button.is_enabled()
+
+    async def get_login_credentials_list(self) -> dict[str, list[str] | str]:
+        """Get the displayed credentials from the login page info panels."""
+        usernames_text = await self.get_text(self.credentials_panel)
+        password_text = await self.get_text(self.password_panel)
+
+        # Parse usernames: the panel has a header line then usernames
+        lines = [line.strip() for line in usernames_text.split("\n") if line.strip()]
+        # First line is the header "Accepted usernames are:", skip it
+        usernames = lines[1:] if len(lines) > 1 else lines
+
+        # Parse password: similar format
+        pw_lines = [line.strip() for line in password_text.split("\n") if line.strip()]
+        password = pw_lines[-1] if pw_lines else ""
+
+        return {"usernames": usernames, "password": password}
 
     async def is_loaded(self) -> bool:
         """Check if login page is fully loaded."""

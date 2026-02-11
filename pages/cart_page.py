@@ -61,6 +61,10 @@ class CartPage(BasePage):
         prices = await self.get_all_item_prices()
         return sum(prices)
 
+    async def get_item_details(self, item_name: str) -> dict[str, str]:
+        """Get details of a specific cart item by name."""
+        return await self.item(item_name).get_details()
+
     # ========================================================================
     # Cart Operations
     # ========================================================================

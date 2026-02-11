@@ -46,6 +46,11 @@ class BasePage:
         self.timeout: int = settings.test.default_timeout
         logger.debug(f"Initialized {self.__class__.__name__}")
 
+    @property
+    def current_url(self) -> str:
+        """Get the current page URL."""
+        return self.page.url
+
     # ========================================================================
     # Navigation
     # ========================================================================
