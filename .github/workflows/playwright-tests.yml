@@ -107,13 +107,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers
-        run: playwright install chromium --with-deps
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
 
       - name: Run smoke tests
         run: pytest -m smoke --browser=chromium -n 4 --alluredir=allure-results
         env:
           ENV: ${{ inputs.environment || 'development' }}
+          BROWSER_CHANNEL: chrome
 
       - name: Upload test results
         if: always()
@@ -215,13 +216,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers
-        run: playwright install chromium --with-deps
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
 
       - name: Run ${{ matrix.feature }} tests
         run: pytest tests/${{ matrix.feature }}/ -n 4 --alluredir=allure-results
         env:
           ENV: development
+          BROWSER_CHANNEL: chrome
 
       - name: Upload test results
         if: always()

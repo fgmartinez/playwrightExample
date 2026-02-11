@@ -157,6 +157,9 @@ def browser_type_launch_args() -> dict[str, Any]:
         "slow_mo": settings.browser.slow_mo,
     }
 
+    if settings.browser.channel:
+        launch_args["channel"] = settings.browser.channel
+
     # Add additional arguments for Chromium
     if settings.browser.browser == "chromium":
         launch_args["args"] = [
@@ -254,7 +257,8 @@ async def authenticated_context(
         >>>     # User is already logged in
     """
     # Launch browser
-    browser = await playwright.chromium.launch(**browser_type_launch_args)
+    browser_launcher = getattr(playwright, settings.browser.browser.value)
+    browser = await browser_launcher.launch(**browser_type_launch_args)
 
     # Check if auth state already exists
     if auth_state_file.exists():

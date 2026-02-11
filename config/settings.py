@@ -169,6 +169,15 @@ class BrowserConfig(BaseSettings):
         description="Enable file downloads",
     )
 
+    channel: str | None = Field(
+        default=None,
+        description=(
+            "Optional browser distribution channel (e.g. 'chrome', 'msedge'). "
+            "When set, Playwright launches the system-installed browser channel "
+            "instead of bundled browser binaries."
+        ),
+    )
+
     downloads_dir: str = Field(
         default="downloads",
         description="Directory for downloaded files",
@@ -411,6 +420,11 @@ class Settings(BaseSettings):
         description="Directory for downloaded files",
     )
 
+    browser_channel: str | None = Field(
+        default=None,
+        description="Optional Playwright browser channel (e.g., chrome, msedge)",
+    )
+
     # Flat Test Configuration Fields
     page_load_timeout: int = Field(
         default=30000,
@@ -648,6 +662,7 @@ class Settings(BaseSettings):
             accept_downloads=self.accept_downloads,
             downloads_dir=self.downloads_dir,
             ignore_https_errors=self.ignore_https_errors,
+            channel=self.browser_channel,
         )
         
         # Create TestConfig
