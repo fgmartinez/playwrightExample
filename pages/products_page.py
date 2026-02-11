@@ -64,6 +64,10 @@ class ProductsPage(BasePage):
         products = await self.get_all_products()
         return [await p.get_price() for p in products]
 
+    async def get_product_details(self, product_name: str) -> dict[str, str]:
+        """Get details of a specific product by name."""
+        return await self.product(product_name).get_details()
+
     # ========================================================================
     # Cart Operations
     # ========================================================================

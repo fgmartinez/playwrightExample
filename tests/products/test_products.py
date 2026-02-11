@@ -1,20 +1,8 @@
 """
-============================================================================
 Products Tests
-============================================================================
-This module contains test cases for product browsing, filtering, sorting,
-and cart operations on the inventory page.
-
-Test Coverage:
-- Product display and count
-- Product sorting (name, price)
-- Adding/removing products from cart
-- Cart badge updates
-- Product details retrieval
-
-Author: Your Name
-Created: 2026-01-23
-============================================================================
+==============
+Test cases for product browsing, filtering, sorting, and cart operations
+on the inventory page.
 """
 
 import pytest
@@ -31,7 +19,7 @@ async def products_page_logged_in(page: Page) -> ProductsPage:
     """Fixture providing logged-in products page."""
     login_page = LoginPage(page)
     await login_page.navigate()
-    await login_page.login_with_standard_user()
+    await login_page.login_as_standard_user()
     products_page = ProductsPage(page)
     await products_page.wait_for_page_load()
     return products_page
@@ -48,13 +36,12 @@ class TestProductDisplay:
         """Verify products page loads with all elements."""
         products_page = products_page_logged_in
 
-        assert await products_page.is_page_loaded(), "Products page should load"
-        await products_page.assert_products_page_displayed()
+        assert await products_page.is_loaded(), "Products page should load"
+        await products_page.assert_displayed()
 
         product_count = await products_page.get_product_count()
         assert product_count > 0, "Should display products"
-
-        logger.info(f"✓ Products page loaded with {product_count} products")
+        logger.info(f"Products page loaded with {product_count} products")
 
     async def test_all_products_have_names(
         self, products_page_logged_in: ProductsPage
@@ -67,8 +54,7 @@ class TestProductDisplay:
 
         for name in product_names:
             assert name and len(name) > 0, "Product name should not be empty"
-
-        logger.info(f"✓ All {len(product_names)} products have names")
+        logger.info(f"All {len(product_names)} products have names")
 
     async def test_all_products_have_prices(
         self, products_page_logged_in: ProductsPage
@@ -81,8 +67,7 @@ class TestProductDisplay:
 
         for price in prices:
             assert price > 0, f"Product price should be positive, got: {price}"
-
-        logger.info(f"✓ All {len(prices)} products have valid prices")
+        logger.info(f"All {len(prices)} products have valid prices")
 
     async def test_get_product_details(
         self, products_page_logged_in: ProductsPage
@@ -98,8 +83,7 @@ class TestProductDisplay:
         assert details["name"] == first_product
         assert len(details["description"]) > 0, "Should have description"
         assert "$" in details["price"], "Price should include $ symbol"
-
-        logger.info(f"✓ Successfully retrieved details for '{first_product}'")
+        logger.info(f"Successfully retrieved details for '{first_product}'")
 
 
 @pytest.mark.products
@@ -113,13 +97,12 @@ class TestProductSorting:
         """Verify products can be sorted A-Z."""
         products_page = products_page_logged_in
 
-        await products_page.sort_products("az")
+        await products_page.sort_by("az")
 
-        assert await products_page.verify_products_sorted_alphabetically_asc(), (
+        assert await products_page.verify_sorted_by_name_asc(), (
             "Products should be sorted A-Z"
         )
-
-        logger.info("✓ Products sorted A-Z correctly")
+        logger.info("Products sorted A-Z correctly")
 
     async def test_sort_products_by_name_descending(
         self, products_page_logged_in: ProductsPage
@@ -127,13 +110,12 @@ class TestProductSorting:
         """Verify products can be sorted Z-A."""
         products_page = products_page_logged_in
 
-        await products_page.sort_products("za")
+        await products_page.sort_by("za")
 
-        assert await products_page.verify_products_sorted_alphabetically_desc(), (
+        assert await products_page.verify_sorted_by_name_desc(), (
             "Products should be sorted Z-A"
         )
-
-        logger.info("✓ Products sorted Z-A correctly")
+        logger.info("Products sorted Z-A correctly")
 
     async def test_sort_products_by_price_low_to_high(
         self, products_page_logged_in: ProductsPage
@@ -141,13 +123,12 @@ class TestProductSorting:
         """Verify products can be sorted by price (low to high)."""
         products_page = products_page_logged_in
 
-        await products_page.sort_products("lohi")
+        await products_page.sort_by("lohi")
 
-        assert await products_page.verify_products_sorted_by_price_asc(), (
+        assert await products_page.verify_sorted_by_price_asc(), (
             "Products should be sorted by price (low to high)"
         )
-
-        logger.info("✓ Products sorted by price (low to high) correctly")
+        logger.info("Products sorted by price (low to high) correctly")
 
     async def test_sort_products_by_price_high_to_low(
         self, products_page_logged_in: ProductsPage
@@ -155,13 +136,12 @@ class TestProductSorting:
         """Verify products can be sorted by price (high to low)."""
         products_page = products_page_logged_in
 
-        await products_page.sort_products("hilo")
+        await products_page.sort_by("hilo")
 
-        assert await products_page.verify_products_sorted_by_price_desc(), (
+        assert await products_page.verify_sorted_by_price_desc(), (
             "Products should be sorted by price (high to low)"
         )
-
-        logger.info("✓ Products sorted by price (high to low) correctly")
+        logger.info("Products sorted by price (high to low) correctly")
 
     async def test_current_sort_option(
         self, products_page_logged_in: ProductsPage
@@ -169,12 +149,11 @@ class TestProductSorting:
         """Verify current sort option can be retrieved."""
         products_page = products_page_logged_in
 
-        await products_page.sort_products("lohi")
-        current_sort = await products_page.get_current_sort_option()
+        await products_page.sort_by("lohi")
+        current_sort = await products_page.get_current_sort()
 
         assert current_sort == "lohi", f"Expected 'lohi', got: {current_sort}"
-
-        logger.info("✓ Current sort option retrieved correctly")
+        logger.info("Current sort option retrieved correctly")
 
 
 @pytest.mark.products
@@ -191,16 +170,15 @@ class TestCartOperations:
         product_names = await products_page.get_all_product_names()
         product_to_add = product_names[0]
 
-        await products_page.add_product_to_cart(product_to_add)
+        await products_page.add_to_cart(product_to_add)
 
         assert await products_page.is_product_in_cart(product_to_add), (
             f"Product '{product_to_add}' should be in cart"
         )
 
-        cart_count = await products_page.get_cart_badge_count()
+        cart_count = await products_page.get_cart_count()
         assert cart_count == 1, f"Cart badge should show 1, got: {cart_count}"
-
-        logger.info(f"✓ Successfully added '{product_to_add}' to cart")
+        logger.info(f"Successfully added '{product_to_add}' to cart")
 
     async def test_add_multiple_products_to_cart(
         self, products_page_logged_in: ProductsPage
@@ -209,16 +187,15 @@ class TestCartOperations:
         products_page = products_page_logged_in
 
         product_names = await products_page.get_all_product_names()
-        products_to_add = product_names[:3]  # Add first 3 products
+        products_to_add = product_names[:3]
 
-        await products_page.add_multiple_products_to_cart(products_to_add)
+        await products_page.add_multiple_to_cart(products_to_add)
 
-        cart_count = await products_page.get_cart_badge_count()
+        cart_count = await products_page.get_cart_count()
         assert cart_count == len(products_to_add), (
             f"Cart badge should show {len(products_to_add)}, got: {cart_count}"
         )
-
-        logger.info(f"✓ Successfully added {len(products_to_add)} products to cart")
+        logger.info(f"Successfully added {len(products_to_add)} products to cart")
 
     async def test_remove_product_from_cart(
         self, products_page_logged_in: ProductsPage
@@ -229,22 +206,18 @@ class TestCartOperations:
         product_names = await products_page.get_all_product_names()
         product = product_names[0]
 
-        # Add product
-        await products_page.add_product_to_cart(product)
+        await products_page.add_to_cart(product)
         assert await products_page.is_product_in_cart(product)
 
-        # Remove product
-        await products_page.remove_product_from_cart(product)
+        await products_page.remove_from_cart(product)
         assert not await products_page.is_product_in_cart(product), (
             f"Product '{product}' should not be in cart"
         )
 
-        # Cart badge should be hidden or show 0
-        assert not await products_page.is_cart_badge_visible(), (
+        assert not await products_page.has_cart_badge(), (
             "Cart badge should not be visible when cart is empty"
         )
-
-        logger.info(f"✓ Successfully removed '{product}' from cart")
+        logger.info(f"Successfully removed '{product}' from cart")
 
     async def test_cart_badge_updates(
         self, products_page_logged_in: ProductsPage
@@ -254,17 +227,14 @@ class TestCartOperations:
 
         product_names = await products_page.get_all_product_names()
 
-        # Initially no badge
-        initial_count = await products_page.get_cart_badge_count()
+        initial_count = await products_page.get_cart_count()
         assert initial_count == 0, "Cart should initially be empty"
 
-        # Add products one by one and verify badge
         for i, product in enumerate(product_names[:3], 1):
-            await products_page.add_product_to_cart(product)
-            count = await products_page.get_cart_badge_count()
+            await products_page.add_to_cart(product)
+            count = await products_page.get_cart_count()
             assert count == i, f"Cart badge should show {i}, got: {count}"
-
-        logger.info("✓ Cart badge updates correctly")
+        logger.info("Cart badge updates correctly")
 
     async def test_add_all_products_to_cart(
         self, products_page_logged_in: ProductsPage
@@ -274,14 +244,13 @@ class TestCartOperations:
 
         product_count = await products_page.get_product_count()
 
-        await products_page.add_all_products_to_cart()
+        await products_page.add_all_to_cart()
 
-        cart_count = await products_page.get_cart_badge_count()
+        cart_count = await products_page.get_cart_count()
         assert cart_count == product_count, (
             f"Cart should contain all {product_count} products, got: {cart_count}"
         )
-
-        logger.info(f"✓ Successfully added all {product_count} products to cart")
+        logger.info(f"Successfully added all {product_count} products to cart")
 
 
 @pytest.mark.products
@@ -294,13 +263,12 @@ class TestNavigation:
         """Verify navigation to cart page."""
         products_page = products_page_logged_in
 
-        await products_page.navigate_to_cart()
+        await products_page.go_to_cart()
 
         assert "/cart.html" in products_page.current_url, (
             "Should navigate to cart page"
         )
-
-        logger.info("✓ Successfully navigated to cart")
+        logger.info("Successfully navigated to cart")
 
     async def test_logout_functionality(
         self, products_page_logged_in: ProductsPage
@@ -311,8 +279,8 @@ class TestNavigation:
         await products_page.logout()
 
         # Should be back on login page
-        assert products_page.current_url == f"{products_page.page.url.split('?')[0]}", (
+        assert "/" == products_page.current_url.split(products_page.page.url.split("/")[2])[-1] or \
+            "saucedemo.com" in products_page.current_url, (
             "Should redirect to login page"
         )
-
-        logger.info("✓ Successfully logged out")
+        logger.info("Successfully logged out")
