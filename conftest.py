@@ -32,6 +32,7 @@ Created: 2026-01-23
 """
 
 import asyncio
+import sys
 from pathlib import Path
 from typing import Any, AsyncGenerator, Generator
 
@@ -47,6 +48,23 @@ logger = get_logger(__name__)
 
 # Stash keys for sharing data between hooks
 phase_key = StashKey[dict[str, Any]]()
+
+
+def _resolve_expected_browser_executable(browser_name: str) -> Path | None:
+    """Resolve expected Playwright browser executable path from local cache."""
+    browser_cache = Path.home() / ".cache" / "ms-playwright"
+    patterns: dict[str, list[str]] = {
+        "chromium": ["chromium-*/chrome-linux/chrome"],
+        "firefox": ["firefox-*/firefox/firefox"],
+        "webkit": ["webkit-*/pw_run.sh"],
+    }
+
+    for pattern in patterns.get(browser_name, []):
+        matches = sorted(browser_cache.glob(pattern), reverse=True)
+        if matches:
+            return matches[0]
+
+    return None
 
 
 def pytest_configure(config: Config) -> None:
@@ -73,6 +91,24 @@ def pytest_configure(config: Config) -> None:
     # Create necessary directories
     settings.reports_dir.mkdir(parents=True, exist_ok=True)
     settings.logs_dir.mkdir(parents=True, exist_ok=True)
+
+
+def pytest_sessionstart(session: Any) -> None:
+    """Fail fast with a clear message when Playwright browser binaries are missing."""
+    browser_name = settings.browser.browser.value
+    expected_browser_binary = _resolve_expected_browser_executable(browser_name)
+
+    if expected_browser_binary is not None and expected_browser_binary.exists():
+        return
+
+    pytest.exit(
+        (
+            f"Playwright browser binary for '{browser_name}' is not installed. "
+            "Install it before running tests: `python -m playwright install "
+            f"{browser_name}`"
+        ),
+        returncode=4,
+    )
 
 
 def pytest_collection_finish(session: Any) -> None:
@@ -122,6 +158,9 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
         session: Pytest session object
         exitstatus: Exit status code
     """
+    if sys.stdout.closed:
+        return
+
     logger.info("=" * 80)
     logger.info("Test Session Finished")
     logger.info(f"Exit Status: {exitstatus}")
