@@ -1,11 +1,12 @@
 # Core Testing Framework Dependencies
 # =================================
 # Playwright - Modern end-to-end testing framework
-playwright==1.41.2
+# >=1.44 required for Ubuntu 24.04 (noble) support
+playwright==1.49.1
 
 # Pytest - Testing framework and plugins
 pytest==8.0.0
-pytest-playwright==0.4.4
+pytest-playwright==0.6.2
 pytest-asyncio==0.23.3
 pytest-xdist==3.5.0  # Parallel test execution
 pytest-html==4.1.1  # HTML reporting
