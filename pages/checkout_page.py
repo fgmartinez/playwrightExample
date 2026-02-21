@@ -11,9 +11,8 @@ from playwright.async_api import Page, expect
 
 import logging
 
-from config import settings
 from pages.components import CartItem, PriceSummary
-from pages.navigator import PageNavigator, get_text, is_visible_safe
+from pages.page_helpers import get_text, is_visible_safe, navigate_to, wait_for_load
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +24,6 @@ class CheckoutInfoPage:
 
     def __init__(self, page: Page) -> None:
         self.page = page
-        self._nav = PageNavigator(page, settings.test.default_timeout)
-        logger.debug("Initialized CheckoutInfoPage")
 
         # Page elements
         self.title = page.locator(".title")
@@ -50,11 +47,11 @@ class CheckoutInfoPage:
 
     async def navigate(self) -> None:
         """Navigate to the checkout info page."""
-        await self._nav.go(self.URL)
+        await navigate_to(self.page, self.URL)
 
     async def wait_for_page_load(self) -> None:
         """Wait for page to be fully loaded."""
-        await self._nav.wait_for_load()
+        await wait_for_load(self.page)
 
     # ========================================================================
     # Form Actions
@@ -122,8 +119,6 @@ class CheckoutOverviewPage:
 
     def __init__(self, page: Page) -> None:
         self.page = page
-        self._nav = PageNavigator(page, settings.test.default_timeout)
-        logger.debug("Initialized CheckoutOverviewPage")
 
         # Page elements
         self.title = page.locator(".title")
@@ -148,11 +143,11 @@ class CheckoutOverviewPage:
 
     async def navigate(self) -> None:
         """Navigate to the checkout overview page."""
-        await self._nav.go(self.URL)
+        await navigate_to(self.page, self.URL)
 
     async def wait_for_page_load(self) -> None:
         """Wait for page to be fully loaded."""
-        await self._nav.wait_for_load()
+        await wait_for_load(self.page)
 
     # ========================================================================
     # Order Items
@@ -258,8 +253,6 @@ class CheckoutCompletePage:
 
     def __init__(self, page: Page) -> None:
         self.page = page
-        self._nav = PageNavigator(page, settings.test.default_timeout)
-        logger.debug("Initialized CheckoutCompletePage")
 
         # Page elements
         self.title = page.locator(".title")
@@ -274,11 +267,11 @@ class CheckoutCompletePage:
 
     async def navigate(self) -> None:
         """Navigate to the checkout complete page."""
-        await self._nav.go(self.URL)
+        await navigate_to(self.page, self.URL)
 
     async def wait_for_page_load(self) -> None:
         """Wait for page to be fully loaded."""
-        await self._nav.wait_for_load()
+        await wait_for_load(self.page)
 
     # ========================================================================
     # Actions

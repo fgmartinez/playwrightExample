@@ -9,9 +9,8 @@ from playwright.async_api import Page, expect
 
 import logging
 
-from config import settings
 from pages.components import ProductCard
-from pages.navigator import PageNavigator, get_text, is_visible_safe
+from pages.page_helpers import get_text, is_visible_safe, navigate_to, wait_for_load
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +22,6 @@ class ProductsPage:
 
     def __init__(self, page: Page) -> None:
         self.page = page
-        self._nav = PageNavigator(page, settings.test.default_timeout)
-        logger.debug("Initialized ProductsPage")
 
         # Header elements
         self.title = page.locator(".title")
@@ -48,11 +45,11 @@ class ProductsPage:
 
     async def navigate(self) -> None:
         """Navigate to the products page."""
-        await self._nav.go(self.URL)
+        await navigate_to(self.page, self.URL)
 
     async def wait_for_page_load(self) -> None:
         """Wait for page to be fully loaded."""
-        await self._nav.wait_for_load()
+        await wait_for_load(self.page)
 
     # ========================================================================
     # Product Card Access
