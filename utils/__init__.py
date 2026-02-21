@@ -4,7 +4,7 @@ Utils Module
 Utility functions, helpers, exceptions, and decorators for the test framework.
 
 Usage:
-    from utils import get_logger, FrameworkError
+    from utils import FrameworkError
     from utils.helpers import take_screenshot, wait_for_condition
 """
 
@@ -17,12 +17,7 @@ from utils.helpers import (
     sanitize_filename,
     take_screenshot,
 )
-from utils.logger import get_logger, setup_logger
-
 __all__ = [
-    # Logger
-    "get_logger",
-    "setup_logger",
     # Exceptions
     "FrameworkError",
     # Helpers

@@ -40,10 +40,9 @@ from playwright.async_api import Browser, BrowserContext, Page, Playwright
 from pytest import Config, Item, StashKey
 
 from config import settings
-from utils.logger import get_logger, setup_logger
+import logging
 
-# Initialize logger
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # Stash keys for sharing data between hooks
 phase_key = StashKey[dict[str, Any]]()
@@ -59,8 +58,16 @@ def pytest_configure(config: Config) -> None:
     Args:
         config: Pytest configuration object
     """
-    # Setup logging
-    setup_logger()
+    # Setup colored logging
+    import colorlog
+    handler = colorlog.StreamHandler()
+    handler.setFormatter(colorlog.ColoredFormatter(
+        "%(log_color)s%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%H:%M:%S",
+    ))
+    logging.basicConfig(handlers=[handler], level=logging.INFO)
+    for noisy in ("playwright", "asyncio", "urllib3", "filelock"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     logger.info("=" * 80)
     logger.info("Test Session Started")
     logger.info("=" * 80)

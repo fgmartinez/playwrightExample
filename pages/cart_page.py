@@ -7,12 +7,13 @@ Uses CartItem component for individual item interactions.
 
 from playwright.async_api import Page, expect
 
+import logging
+
 from config import settings
 from pages.components import CartItem
 from pages.navigator import PageNavigator
-from utils.logger import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class CartPage:

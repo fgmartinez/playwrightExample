@@ -40,10 +40,9 @@ from faker import Faker
 from playwright.async_api import Page
 
 from config import settings
-from utils.logger import get_logger
+import logging
 
-# Initialize logger for this module
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # Initialize Faker for generating realistic test data
 faker = Faker()

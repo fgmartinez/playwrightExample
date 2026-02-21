@@ -34,9 +34,9 @@ from typing import Any, Callable, TypeVar, cast
 
 from playwright.async_api import Page
 
-from utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # Type variables for generic decorators
 F = TypeVar("F", bound=Callable[..., Any])

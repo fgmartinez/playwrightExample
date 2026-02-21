@@ -8,10 +8,11 @@ on the inventory page.
 import pytest
 from playwright.async_api import Page
 
-from pages import LoginPage, ProductsPage
-from utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+from pages import LoginPage, ProductsPage
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture

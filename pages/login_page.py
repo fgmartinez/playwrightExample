@@ -7,11 +7,12 @@ Elements are defined as Locators for clean, chainable interactions.
 
 from playwright.async_api import Page, expect
 
+import logging
+
 from config import settings
 from pages.navigator import PageNavigator, get_text, is_visible_safe
-from utils.logger import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class LoginPage:

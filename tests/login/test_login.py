@@ -14,10 +14,11 @@ from playwright.async_api import Page, expect
 
 from config import settings
 from pages import LoginPage
-from utils.decorators import log_execution_time
-from utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+from utils.decorators import log_execution_time
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.login

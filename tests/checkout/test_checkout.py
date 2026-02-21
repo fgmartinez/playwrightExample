@@ -16,10 +16,11 @@ from pages import (
     LoginPage,
     ProductsPage,
 )
-from utils.helpers import generate_test_user_data
-from utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+from utils.helpers import generate_test_user_data
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
