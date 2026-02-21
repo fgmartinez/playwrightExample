@@ -67,3 +67,25 @@ async def is_visible_safe(locator: Locator) -> bool:
         return await locator.is_visible()
     except Exception:
         return False
+
+
+class BasePage:
+    """Base class for all page objects.
+
+    Provides the two methods that would otherwise be copy-pasted into every
+    page class: ``navigate`` (go to the page's URL) and ``wait_for_page_load``
+    (wait for network idle). Subclasses must define a ``URL`` class attribute.
+    """
+
+    URL: str = "/"
+
+    def __init__(self, page: Page) -> None:
+        self.page = page
+
+    async def navigate(self) -> None:
+        """Navigate to this page's URL."""
+        await navigate_to(self.page, self.URL)
+
+    async def wait_for_page_load(self) -> None:
+        """Wait for page to be fully loaded."""
+        await wait_for_load(self.page)

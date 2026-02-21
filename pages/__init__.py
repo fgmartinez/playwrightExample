@@ -19,10 +19,12 @@ from pages.checkout_page import (
 )
 from pages.components import CartItem, PriceSummary, ProductCard
 from pages.login_page import LoginPage
-from pages.page_helpers import get_text, is_visible_safe, navigate_to, wait_for_load
+from pages.page_helpers import BasePage, get_text, is_visible_safe, navigate_to, wait_for_load
 from pages.products_page import ProductsPage
 
 __all__ = [
+    # Base
+    "BasePage",
     # Helpers
     "navigate_to",
     "wait_for_load",
