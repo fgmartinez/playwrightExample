@@ -10,18 +10,18 @@ from playwright.async_api import Page, expect
 import logging
 
 from config import settings
-from pages.page_helpers import get_text, is_visible_safe, navigate_to, wait_for_load
+from pages.page_helpers import BasePage, get_text, is_visible_safe
 
 logger = logging.getLogger(__name__)
 
 
-class LoginPage:
+class LoginPage(BasePage):
     """Page object for the SauceDemo login page."""
 
     URL = "/"
 
     def __init__(self, page: Page) -> None:
-        self.page = page
+        super().__init__(page)
 
         # Form elements - using get_by_test_id for stability
         self.username_input = page.get_by_test_id("username")
@@ -35,18 +35,6 @@ class LoginPage:
         # Info panels
         self.credentials_panel = page.locator("#login_credentials")
         self.password_panel = page.locator(".login_password")
-
-    # ========================================================================
-    # Navigation
-    # ========================================================================
-
-    async def navigate(self) -> None:
-        """Navigate to the login page."""
-        await navigate_to(self.page, self.URL)
-
-    async def wait_for_page_load(self) -> None:
-        """Wait for page to be fully loaded."""
-        await wait_for_load(self.page)
 
     # ========================================================================
     # Actions

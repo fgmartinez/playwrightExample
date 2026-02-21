@@ -12,18 +12,18 @@ from playwright.async_api import Page, expect
 import logging
 
 from pages.components import CartItem, PriceSummary
-from pages.page_helpers import get_text, is_visible_safe, navigate_to, wait_for_load
+from pages.page_helpers import BasePage, get_text, is_visible_safe
 
 logger = logging.getLogger(__name__)
 
 
-class CheckoutInfoPage:
+class CheckoutInfoPage(BasePage):
     """Page object for checkout step one - customer information."""
 
     URL = "/checkout-step-one.html"
 
     def __init__(self, page: Page) -> None:
-        self.page = page
+        super().__init__(page)
 
         # Page elements
         self.title = page.locator(".title")
@@ -40,18 +40,6 @@ class CheckoutInfoPage:
         # Error
         self.error_container = page.get_by_test_id("error")
         self.error_close_button = page.locator(".error-button")
-
-    # ========================================================================
-    # Navigation
-    # ========================================================================
-
-    async def navigate(self) -> None:
-        """Navigate to the checkout info page."""
-        await navigate_to(self.page, self.URL)
-
-    async def wait_for_page_load(self) -> None:
-        """Wait for page to be fully loaded."""
-        await wait_for_load(self.page)
 
     # ========================================================================
     # Form Actions
@@ -112,13 +100,13 @@ class CheckoutInfoPage:
         await expect(self.title).to_contain_text("Checkout: Your Information")
 
 
-class CheckoutOverviewPage:
+class CheckoutOverviewPage(BasePage):
     """Page object for checkout step two - order overview."""
 
     URL = "/checkout-step-two.html"
 
     def __init__(self, page: Page) -> None:
-        self.page = page
+        super().__init__(page)
 
         # Page elements
         self.title = page.locator(".title")
@@ -136,18 +124,6 @@ class CheckoutOverviewPage:
 
         # Cart items
         self._cart_items = CartItem.all_items(page)
-
-    # ========================================================================
-    # Navigation
-    # ========================================================================
-
-    async def navigate(self) -> None:
-        """Navigate to the checkout overview page."""
-        await navigate_to(self.page, self.URL)
-
-    async def wait_for_page_load(self) -> None:
-        """Wait for page to be fully loaded."""
-        await wait_for_load(self.page)
 
     # ========================================================================
     # Order Items
@@ -246,13 +222,13 @@ class CheckoutOverviewPage:
         await expect(self.title).to_contain_text("Checkout: Overview")
 
 
-class CheckoutCompletePage:
+class CheckoutCompletePage(BasePage):
     """Page object for checkout complete - order confirmation."""
 
     URL = "/checkout-complete.html"
 
     def __init__(self, page: Page) -> None:
-        self.page = page
+        super().__init__(page)
 
         # Page elements
         self.title = page.locator(".title")
@@ -260,18 +236,6 @@ class CheckoutCompletePage:
         self.complete_text = page.locator(".complete-text")
         self.pony_image = page.locator(".pony_express")
         self.back_button = page.get_by_test_id("back-to-products")
-
-    # ========================================================================
-    # Navigation
-    # ========================================================================
-
-    async def navigate(self) -> None:
-        """Navigate to the checkout complete page."""
-        await navigate_to(self.page, self.URL)
-
-    async def wait_for_page_load(self) -> None:
-        """Wait for page to be fully loaded."""
-        await wait_for_load(self.page)
 
     # ========================================================================
     # Actions

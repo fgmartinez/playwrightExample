@@ -10,18 +10,18 @@ from playwright.async_api import Page, expect
 import logging
 
 from pages.components import CartItem
-from pages.page_helpers import navigate_to, wait_for_load
+from pages.page_helpers import BasePage
 
 logger = logging.getLogger(__name__)
 
 
-class CartPage:
+class CartPage(BasePage):
     """Page object for the SauceDemo shopping cart page."""
 
     URL = "/cart.html"
 
     def __init__(self, page: Page) -> None:
-        self.page = page
+        super().__init__(page)
 
         # Page elements
         self.title = page.locator(".title")
@@ -30,18 +30,6 @@ class CartPage:
 
         # Cart items - use component class
         self._cart_items = CartItem.all_items(page)
-
-    # ========================================================================
-    # Navigation
-    # ========================================================================
-
-    async def navigate(self) -> None:
-        """Navigate to the cart page."""
-        await navigate_to(self.page, self.URL)
-
-    async def wait_for_page_load(self) -> None:
-        """Wait for page to be fully loaded."""
-        await wait_for_load(self.page)
 
     # ========================================================================
     # Cart Item Access
