@@ -4,27 +4,11 @@ Pages Module - Page Object Model
 Page objects and reusable components for the SauceDemo application.
 
 Design Principles:
-- Composition over inheritance: page objects hold a PageNavigator rather
-  than extending a base class
-- Elements defined as Locators (not strings) for cleaner interactions
+- Composition over inheritance: shared behaviour lives in page_helpers
+- Elements defined as Locators for clean, chainable interactions
 - Semantic locators (get_by_test_id, get_by_role) preferred
 - Reusable components for repeated UI patterns
-- Minimal abstraction - leverage Playwright's native API
-
-Usage:
-    from pages import LoginPage, ProductsPage, ProductCard
-
-    async def test_add_to_cart(page):
-        login = LoginPage(page)
-        await login.navigate()
-        await login.login("user", "pass")
-
-        products = ProductsPage(page)
-        await products.add_to_cart("Sauce Labs Backpack")
-
-        # Or use component directly
-        card = ProductCard.by_name(page, "Sauce Labs Backpack")
-        await card.add_to_cart()
+- Minimal abstraction — leverage Playwright's native API
 """
 
 from pages.cart_page import CartPage
@@ -35,12 +19,13 @@ from pages.checkout_page import (
 )
 from pages.components import CartItem, PriceSummary, ProductCard
 from pages.login_page import LoginPage
-from pages.navigator import PageNavigator, get_text, is_visible_safe
+from pages.page_helpers import get_text, is_visible_safe, navigate_to, wait_for_load
 from pages.products_page import ProductsPage
 
 __all__ = [
-    # Navigation
-    "PageNavigator",
+    # Helpers
+    "navigate_to",
+    "wait_for_load",
     "get_text",
     "is_visible_safe",
     # Pages

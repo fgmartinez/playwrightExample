@@ -16,11 +16,12 @@ from pages import (
     LoginPage,
     ProductsPage,
 )
+import logging
+
 from utils.decorators import log_execution_time
 from utils.helpers import generate_test_user_data
-from utils.logger import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.e2e

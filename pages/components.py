@@ -21,9 +21,9 @@ Usage:
 from dataclasses import dataclass
 from playwright.async_api import Locator, Page
 
-from utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ProductCard:
