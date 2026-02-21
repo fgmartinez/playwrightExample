@@ -7,21 +7,25 @@ Page objects for the SauceDemo checkout flow:
 3. CheckoutCompletePage - Order confirmation
 """
 
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
-from pages.base_page import BasePage
+from config import settings
 from pages.components import CartItem, PriceSummary
+from pages.navigator import PageNavigator, get_text, is_visible_safe
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class CheckoutInfoPage(BasePage):
+class CheckoutInfoPage:
     """Page object for checkout step one - customer information."""
 
+    URL = "/checkout-step-one.html"
+
     def __init__(self, page: Page) -> None:
-        super().__init__(page)
-        self.url = "/checkout-step-one.html"
+        self.page = page
+        self._nav = PageNavigator(page, settings.test.default_timeout)
+        logger.debug("Initialized CheckoutInfoPage")
 
         # Page elements
         self.title = page.locator(".title")
@@ -38,6 +42,18 @@ class CheckoutInfoPage(BasePage):
         # Error
         self.error_container = page.get_by_test_id("error")
         self.error_close_button = page.locator(".error-button")
+
+    # ========================================================================
+    # Navigation
+    # ========================================================================
+
+    async def navigate(self) -> None:
+        """Navigate to the checkout info page."""
+        await self._nav.go(self.URL)
+
+    async def wait_for_page_load(self) -> None:
+        """Wait for page to be fully loaded."""
+        await self._nav.wait_for_load()
 
     # ========================================================================
     # Form Actions
@@ -62,7 +78,7 @@ class CheckoutInfoPage(BasePage):
 
     async def close_error(self) -> None:
         """Close error message if visible."""
-        if await self.is_visible_safe(self.error_container):
+        if await is_visible_safe(self.error_container):
             await self.error_close_button.click()
 
     # ========================================================================
@@ -71,12 +87,12 @@ class CheckoutInfoPage(BasePage):
 
     async def has_error(self) -> bool:
         """Check if error is displayed."""
-        return await self.is_visible_safe(self.error_container)
+        return await is_visible_safe(self.error_container)
 
     async def get_error_message(self) -> str:
         """Get error message text."""
         if await self.has_error():
-            return await self.get_text(self.error_container)
+            return await get_text(self.error_container)
         return ""
 
     async def is_loaded(self) -> bool:
@@ -94,16 +110,19 @@ class CheckoutInfoPage(BasePage):
 
     async def assert_displayed(self) -> None:
         """Assert checkout info page is displayed."""
-        await self.assert_visible(self.title)
-        await self.assert_has_text(self.title, "Checkout: Your Information")
+        await expect(self.title).to_be_visible()
+        await expect(self.title).to_contain_text("Checkout: Your Information")
 
 
-class CheckoutOverviewPage(BasePage):
+class CheckoutOverviewPage:
     """Page object for checkout step two - order overview."""
 
+    URL = "/checkout-step-two.html"
+
     def __init__(self, page: Page) -> None:
-        super().__init__(page)
-        self.url = "/checkout-step-two.html"
+        self.page = page
+        self._nav = PageNavigator(page, settings.test.default_timeout)
+        logger.debug("Initialized CheckoutOverviewPage")
 
         # Page elements
         self.title = page.locator(".title")
@@ -121,6 +140,18 @@ class CheckoutOverviewPage(BasePage):
 
         # Cart items
         self._cart_items = CartItem.all_items(page)
+
+    # ========================================================================
+    # Navigation
+    # ========================================================================
+
+    async def navigate(self) -> None:
+        """Navigate to the checkout overview page."""
+        await self._nav.go(self.URL)
+
+    async def wait_for_page_load(self) -> None:
+        """Wait for page to be fully loaded."""
+        await self._nav.wait_for_load()
 
     # ========================================================================
     # Order Items
@@ -148,17 +179,17 @@ class CheckoutOverviewPage(BasePage):
 
     async def get_subtotal(self) -> float:
         """Get order subtotal."""
-        text = await self.get_text(self.subtotal_label)
+        text = await get_text(self.subtotal_label)
         return await self._parse_price(text)
 
     async def get_tax(self) -> float:
         """Get tax amount."""
-        text = await self.get_text(self.tax_label)
+        text = await get_text(self.tax_label)
         return await self._parse_price(text)
 
     async def get_total(self) -> float:
         """Get order total."""
-        text = await self.get_text(self.total_label)
+        text = await get_text(self.total_label)
         return await self._parse_price(text)
 
     async def get_price_summary(self) -> PriceSummary:
@@ -171,11 +202,11 @@ class CheckoutOverviewPage(BasePage):
 
     async def get_payment_info(self) -> str:
         """Get payment information text."""
-        return await self.get_text(self.payment_info)
+        return await get_text(self.payment_info)
 
     async def get_shipping_info(self) -> str:
         """Get shipping information text."""
-        return await self.get_text(self.shipping_info)
+        return await get_text(self.shipping_info)
 
     # ========================================================================
     # Actions
@@ -215,16 +246,19 @@ class CheckoutOverviewPage(BasePage):
 
     async def assert_displayed(self) -> None:
         """Assert overview page is displayed."""
-        await self.assert_visible(self.title)
-        await self.assert_has_text(self.title, "Checkout: Overview")
+        await expect(self.title).to_be_visible()
+        await expect(self.title).to_contain_text("Checkout: Overview")
 
 
-class CheckoutCompletePage(BasePage):
+class CheckoutCompletePage:
     """Page object for checkout complete - order confirmation."""
 
+    URL = "/checkout-complete.html"
+
     def __init__(self, page: Page) -> None:
-        super().__init__(page)
-        self.url = "/checkout-complete.html"
+        self.page = page
+        self._nav = PageNavigator(page, settings.test.default_timeout)
+        logger.debug("Initialized CheckoutCompletePage")
 
         # Page elements
         self.title = page.locator(".title")
@@ -232,6 +266,18 @@ class CheckoutCompletePage(BasePage):
         self.complete_text = page.locator(".complete-text")
         self.pony_image = page.locator(".pony_express")
         self.back_button = page.get_by_test_id("back-to-products")
+
+    # ========================================================================
+    # Navigation
+    # ========================================================================
+
+    async def navigate(self) -> None:
+        """Navigate to the checkout complete page."""
+        await self._nav.go(self.URL)
+
+    async def wait_for_page_load(self) -> None:
+        """Wait for page to be fully loaded."""
+        await self._nav.wait_for_load()
 
     # ========================================================================
     # Actions
@@ -249,18 +295,18 @@ class CheckoutCompletePage(BasePage):
     async def is_order_complete(self) -> bool:
         """Check if order completed successfully."""
         try:
-            header = await self.get_text(self.complete_header)
+            header = await get_text(self.complete_header)
             return "thank you" in header.lower()
         except Exception:
             return False
 
     async def get_confirmation_header(self) -> str:
         """Get confirmation header text."""
-        return await self.get_text(self.complete_header)
+        return await get_text(self.complete_header)
 
     async def get_confirmation_message(self) -> str:
         """Get confirmation message text."""
-        return await self.get_text(self.complete_text)
+        return await get_text(self.complete_text)
 
     async def is_loaded(self) -> bool:
         """Check if page is loaded."""
@@ -277,11 +323,11 @@ class CheckoutCompletePage(BasePage):
 
     async def assert_displayed(self) -> None:
         """Assert complete page is displayed."""
-        await self.assert_visible(self.title)
-        await self.assert_has_text(self.title, "Checkout: Complete!")
+        await expect(self.title).to_be_visible()
+        await expect(self.title).to_contain_text("Checkout: Complete!")
 
     async def assert_order_successful(self) -> None:
         """Assert order completed successfully."""
         assert await self.is_order_complete(), "Order should be complete"
-        await self.assert_visible(self.complete_header)
-        await self.assert_visible(self.pony_image)
+        await expect(self.complete_header).to_be_visible()
+        await expect(self.pony_image).to_be_visible()

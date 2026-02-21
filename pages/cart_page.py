@@ -5,21 +5,25 @@ Page object for SauceDemo shopping cart page.
 Uses CartItem component for individual item interactions.
 """
 
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
-from pages.base_page import BasePage
+from config import settings
 from pages.components import CartItem
+from pages.navigator import PageNavigator
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class CartPage(BasePage):
+class CartPage:
     """Page object for the SauceDemo shopping cart page."""
 
+    URL = "/cart.html"
+
     def __init__(self, page: Page) -> None:
-        super().__init__(page)
-        self.url = "/cart.html"
+        self.page = page
+        self._nav = PageNavigator(page, settings.test.default_timeout)
+        logger.debug("Initialized CartPage")
 
         # Page elements
         self.title = page.locator(".title")
@@ -28,6 +32,18 @@ class CartPage(BasePage):
 
         # Cart items - use component class
         self._cart_items = CartItem.all_items(page)
+
+    # ========================================================================
+    # Navigation
+    # ========================================================================
+
+    async def navigate(self) -> None:
+        """Navigate to the cart page."""
+        await self._nav.go(self.URL)
+
+    async def wait_for_page_load(self) -> None:
+        """Wait for page to be fully loaded."""
+        await self._nav.wait_for_load()
 
     # ========================================================================
     # Cart Item Access
@@ -123,8 +139,8 @@ class CartPage(BasePage):
 
     async def assert_displayed(self) -> None:
         """Assert cart page is displayed."""
-        await self.assert_visible(self.title)
-        await self.assert_has_text(self.title, "Your Cart")
+        await expect(self.title).to_be_visible()
+        await expect(self.title).to_contain_text("Your Cart")
 
     async def assert_item_count(self, expected: int) -> None:
         """Assert cart has expected number of items."""
