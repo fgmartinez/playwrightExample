@@ -5,21 +5,25 @@ Page object for SauceDemo inventory/products page.
 Uses ProductCard component for individual product interactions.
 """
 
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
-from pages.base_page import BasePage
+from config import settings
 from pages.components import ProductCard
+from pages.navigator import PageNavigator, get_text, is_visible_safe
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class ProductsPage(BasePage):
+class ProductsPage:
     """Page object for the SauceDemo products/inventory page."""
 
+    URL = "/inventory.html"
+
     def __init__(self, page: Page) -> None:
-        super().__init__(page)
-        self.url = "/inventory.html"
+        self.page = page
+        self._nav = PageNavigator(page, settings.test.default_timeout)
+        logger.debug("Initialized ProductsPage")
 
         # Header elements
         self.title = page.locator(".title")
@@ -36,6 +40,18 @@ class ProductsPage(BasePage):
 
         # Product cards - use component class
         self._product_cards = ProductCard.all_cards(page)
+
+    # ========================================================================
+    # Navigation
+    # ========================================================================
+
+    async def navigate(self) -> None:
+        """Navigate to the products page."""
+        await self._nav.go(self.URL)
+
+    async def wait_for_page_load(self) -> None:
+        """Wait for page to be fully loaded."""
+        await self._nav.wait_for_load()
 
     # ========================================================================
     # Product Card Access
@@ -103,14 +119,14 @@ class ProductsPage(BasePage):
 
     async def get_cart_count(self) -> int:
         """Get number of items shown in cart badge (0 if not visible)."""
-        if await self.is_visible_safe(self.cart_badge):
-            text = await self.get_text(self.cart_badge)
+        if await is_visible_safe(self.cart_badge):
+            text = await get_text(self.cart_badge)
             return int(text) if text else 0
         return 0
 
     async def has_cart_badge(self) -> bool:
         """Check if cart badge is visible (has items)."""
-        return await self.is_visible_safe(self.cart_badge)
+        return await is_visible_safe(self.cart_badge)
 
     # ========================================================================
     # Navigation
@@ -189,8 +205,8 @@ class ProductsPage(BasePage):
 
     async def assert_displayed(self) -> None:
         """Assert products page is displayed."""
-        await self.assert_visible(self.title)
-        await self.assert_has_text(self.title, "Products")
+        await expect(self.title).to_be_visible()
+        await expect(self.title).to_contain_text("Products")
 
     async def assert_cart_count(self, expected: int) -> None:
         """Assert cart badge shows expected count."""

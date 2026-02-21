@@ -5,21 +5,24 @@ Page object for SauceDemo login page using modern Playwright patterns.
 Elements are defined as Locators for clean, chainable interactions.
 """
 
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
 from config import settings
-from pages.base_page import BasePage
+from pages.navigator import PageNavigator, get_text, is_visible_safe
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class LoginPage(BasePage):
+class LoginPage:
     """Page object for the SauceDemo login page."""
 
+    URL = "/"
+
     def __init__(self, page: Page) -> None:
-        super().__init__(page)
-        self.url = "/"
+        self.page = page
+        self._nav = PageNavigator(page, settings.test.default_timeout)
+        logger.debug("Initialized LoginPage")
 
         # Form elements - using get_by_test_id for stability
         self.username_input = page.get_by_test_id("username")
@@ -33,6 +36,18 @@ class LoginPage(BasePage):
         # Info panels
         self.credentials_panel = page.locator("#login_credentials")
         self.password_panel = page.locator(".login_password")
+
+    # ========================================================================
+    # Navigation
+    # ========================================================================
+
+    async def navigate(self) -> None:
+        """Navigate to the login page."""
+        await self._nav.go(self.URL)
+
+    async def wait_for_page_load(self) -> None:
+        """Wait for page to be fully loaded."""
+        await self._nav.wait_for_load()
 
     # ========================================================================
     # Actions
@@ -86,7 +101,7 @@ class LoginPage(BasePage):
 
     async def close_error(self) -> None:
         """Close error message if visible."""
-        if await self.is_visible_safe(self.error_container):
+        if await is_visible_safe(self.error_container):
             await self.error_close_button.click()
 
     # ========================================================================
@@ -105,12 +120,12 @@ class LoginPage(BasePage):
 
     async def has_error(self) -> bool:
         """Check if error message is displayed."""
-        return await self.is_visible_safe(self.error_container)
+        return await is_visible_safe(self.error_container)
 
     async def get_error_message(self) -> str:
         """Get error message text."""
         if await self.has_error():
-            return await self.get_text(self.error_container)
+            return await get_text(self.error_container)
         return ""
 
     async def get_username_value(self) -> str:
@@ -127,8 +142,8 @@ class LoginPage(BasePage):
 
     async def get_login_credentials_list(self) -> dict[str, list[str] | str]:
         """Get the displayed credentials from the login page info panels."""
-        usernames_text = await self.get_text(self.credentials_panel)
-        password_text = await self.get_text(self.password_panel)
+        usernames_text = await get_text(self.credentials_panel)
+        password_text = await get_text(self.password_panel)
 
         # Parse usernames: the panel has a header line then usernames
         lines = [line.strip() for line in usernames_text.split("\n") if line.strip()]
@@ -156,9 +171,9 @@ class LoginPage(BasePage):
 
     async def assert_displayed(self) -> None:
         """Assert login page is displayed with all elements."""
-        await self.assert_visible(self.username_input)
-        await self.assert_visible(self.password_input)
-        await self.assert_visible(self.login_button)
+        await expect(self.username_input).to_be_visible()
+        await expect(self.password_input).to_be_visible()
+        await expect(self.login_button).to_be_visible()
         logger.debug("Login page displayed correctly")
 
     async def assert_error_contains(self, text: str) -> None:
