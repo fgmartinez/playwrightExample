@@ -6,8 +6,9 @@ through the SauceDemo application.
 """
 
 import pytest
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
+from config import UserType
 from pages import (
     CartPage,
     CheckoutCompletePage,
@@ -35,7 +36,7 @@ class TestCompletePurchaseFlow:
         # Step 1: Login
         login_page = LoginPage(page)
         await login_page.navigate()
-        await login_page.login_as_standard_user()
+        await login_page.login_as(UserType.STANDARD)
         assert await login_page.is_login_successful(), "Login should succeed"
         logger.info("Step 1: Logged in successfully")
 
@@ -88,7 +89,9 @@ class TestCompletePurchaseFlow:
 
         # Step 8: Verify completion
         complete = CheckoutCompletePage(page)
-        await complete.assert_order_successful()
+        assert await complete.is_order_complete(), "Order should be complete"
+        await expect(complete.complete_header).to_be_visible()
+        await expect(complete.pony_image).to_be_visible()
         logger.info("Step 7-8: Order completed successfully")
 
     @log_execution_time
@@ -96,7 +99,7 @@ class TestCompletePurchaseFlow:
         """Test complete purchase flow with multiple products."""
         login_page = LoginPage(page)
         await login_page.navigate()
-        await login_page.login_as_standard_user()
+        await login_page.login_as(UserType.STANDARD)
         logger.info("Logged in")
 
         products_page = ProductsPage(page)
@@ -140,7 +143,7 @@ class TestCompletePurchaseFlow:
         """Test purchase flow with product sorting."""
         login_page = LoginPage(page)
         await login_page.navigate()
-        await login_page.login_as_standard_user()
+        await login_page.login_as(UserType.STANDARD)
 
         products_page = ProductsPage(page)
         await products_page.sort_by("lohi")
@@ -181,7 +184,7 @@ class TestCompletePurchaseFlow:
         """Test purchase flow with cart modifications."""
         login_page = LoginPage(page)
         await login_page.navigate()
-        await login_page.login_as_standard_user()
+        await login_page.login_as(UserType.STANDARD)
 
         products_page = ProductsPage(page)
         product_names = await products_page.get_all_product_names()
@@ -226,7 +229,7 @@ class TestCompletePurchaseFlow:
         # Step 1: Login
         login_page = LoginPage(page)
         await login_page.navigate()
-        await login_page.login_as_standard_user()
+        await login_page.login_as(UserType.STANDARD)
         logger.info("Step 1: Logged in")
 
         # Step 2-3: Browse and sort

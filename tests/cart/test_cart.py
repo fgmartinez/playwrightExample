@@ -6,10 +6,11 @@ calculations, and navigation.
 """
 
 import pytest
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
 import logging
 
+from config import UserType
 from pages import CartPage, LoginPage, ProductsPage
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ async def cart_with_items(page: Page) -> CartPage:
     """Fixture providing cart page with items already added."""
     login_page = LoginPage(page)
     await login_page.navigate()
-    await login_page.login_as_standard_user()
+    await login_page.login_as(UserType.STANDARD)
 
     products_page = ProductsPage(page)
     await products_page.wait_for_page_load()
@@ -45,7 +46,8 @@ class TestCartDisplay:
         cart_page = cart_with_items
 
         assert await cart_page.is_loaded(), "Cart page should load"
-        await cart_page.assert_displayed()
+        await expect(cart_page.title).to_be_visible()
+        await expect(cart_page.title).to_contain_text("Your Cart")
         logger.info("Cart page loaded successfully")
 
     async def test_cart_displays_added_items(self, cart_with_items: CartPage) -> None:
@@ -78,7 +80,7 @@ class TestCartDisplay:
         """Verify empty cart display."""
         login_page = LoginPage(page)
         await login_page.navigate()
-        await login_page.login_as_standard_user()
+        await login_page.login_as(UserType.STANDARD)
 
         products_page = ProductsPage(page)
         await products_page.go_to_cart()

@@ -5,7 +5,7 @@ Page object for SauceDemo shopping cart page.
 Uses CartItem component for individual item interactions.
 """
 
-from playwright.async_api import Page, expect
+from playwright.async_api import Page
 
 import logging
 
@@ -119,24 +119,3 @@ class CartPage(BasePage):
         except Exception:
             return False
 
-    # ========================================================================
-    # Assertions
-    # ========================================================================
-
-    async def assert_displayed(self) -> None:
-        """Assert cart page is displayed."""
-        await expect(self.title).to_be_visible()
-        await expect(self.title).to_contain_text("Your Cart")
-
-    async def assert_item_count(self, expected: int) -> None:
-        """Assert cart has expected number of items."""
-        actual = await self.get_item_count()
-        assert actual == expected, f"Expected {expected} items, got {actual}"
-
-    async def assert_has_item(self, item_name: str) -> None:
-        """Assert item is in cart."""
-        assert await self.has_item(item_name), f"Item '{item_name}' should be in cart"
-
-    async def assert_empty(self) -> None:
-        """Assert cart is empty."""
-        assert await self.is_empty(), "Cart should be empty"
