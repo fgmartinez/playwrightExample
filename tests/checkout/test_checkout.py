@@ -6,8 +6,9 @@ order review, and order completion.
 """
 
 import pytest
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
+from config import UserType
 from pages import (
     CartPage,
     CheckoutCompletePage,
@@ -28,7 +29,7 @@ async def checkout_info_page(page: Page) -> CheckoutInfoPage:
     """Fixture providing checkout information page with items in cart."""
     login_page = LoginPage(page)
     await login_page.navigate()
-    await login_page.login_as_standard_user()
+    await login_page.login_as(UserType.STANDARD)
 
     products_page = ProductsPage(page)
     product_names = await products_page.get_all_product_names()
@@ -53,7 +54,8 @@ class TestCheckoutInformation:
         checkout_page = checkout_info_page
 
         assert await checkout_page.is_loaded(), "Checkout info page should load"
-        await checkout_page.assert_displayed()
+        await expect(checkout_page.title).to_be_visible()
+        await expect(checkout_page.title).to_contain_text("Checkout: Your Information")
         logger.info("Checkout information page loaded")
 
     async def test_fill_valid_information(
@@ -163,7 +165,8 @@ class TestCheckoutOverview:
         overview_page = checkout_overview_page
 
         assert await overview_page.is_loaded(), "Overview page should load"
-        await overview_page.assert_displayed()
+        await expect(overview_page.title).to_be_visible()
+        await expect(overview_page.title).to_contain_text("Checkout: Overview")
         logger.info("Checkout overview page loaded")
 
     async def test_order_items_displayed(
@@ -246,7 +249,8 @@ class TestCheckoutComplete:
         complete_page = complete_checkout
 
         assert await complete_page.is_loaded(), "Complete page should load"
-        await complete_page.assert_displayed()
+        await expect(complete_page.title).to_be_visible()
+        await expect(complete_page.title).to_contain_text("Checkout: Complete!")
         logger.info("Checkout complete page loaded")
 
     async def test_order_completion_success(
@@ -256,7 +260,8 @@ class TestCheckoutComplete:
         complete_page = complete_checkout
 
         assert await complete_page.is_order_complete(), "Order should be complete"
-        await complete_page.assert_order_successful()
+        await expect(complete_page.complete_header).to_be_visible()
+        await expect(complete_page.pony_image).to_be_visible()
         logger.info("Order completed successfully")
 
     async def test_confirmation_messages(

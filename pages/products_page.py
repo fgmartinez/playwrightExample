@@ -5,7 +5,7 @@ Page object for SauceDemo inventory/products page.
 Uses ProductCard component for individual product interactions.
 """
 
-from playwright.async_api import Page, expect
+from playwright.async_api import Page
 
 import logging
 
@@ -185,21 +185,3 @@ class ProductsPage(BasePage):
         except Exception:
             return False
 
-    # ========================================================================
-    # Assertions
-    # ========================================================================
-
-    async def assert_displayed(self) -> None:
-        """Assert products page is displayed."""
-        await expect(self.title).to_be_visible()
-        await expect(self.title).to_contain_text("Products")
-
-    async def assert_cart_count(self, expected: int) -> None:
-        """Assert cart badge shows expected count."""
-        actual = await self.get_cart_count()
-        assert actual == expected, f"Expected cart count {expected}, got {actual}"
-
-    async def assert_product_in_cart(self, product_name: str) -> None:
-        """Assert product is in cart."""
-        assert await self.is_product_in_cart(product_name), \
-            f"Product '{product_name}' should be in cart"

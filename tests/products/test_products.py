@@ -6,10 +6,11 @@ on the inventory page.
 """
 
 import pytest
-from playwright.async_api import Page
+from playwright.async_api import Page, expect
 
 import logging
 
+from config import UserType
 from pages import LoginPage, ProductsPage
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ async def products_page_logged_in(page: Page) -> ProductsPage:
     """Fixture providing logged-in products page."""
     login_page = LoginPage(page)
     await login_page.navigate()
-    await login_page.login_as_standard_user()
+    await login_page.login_as(UserType.STANDARD)
     products_page = ProductsPage(page)
     await products_page.wait_for_page_load()
     return products_page
@@ -38,7 +39,8 @@ class TestProductDisplay:
         products_page = products_page_logged_in
 
         assert await products_page.is_loaded(), "Products page should load"
-        await products_page.assert_displayed()
+        await expect(products_page.title).to_be_visible()
+        await expect(products_page.title).to_contain_text("Products")
 
         product_count = await products_page.get_product_count()
         assert product_count > 0, "Should display products"

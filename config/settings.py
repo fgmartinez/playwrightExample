@@ -15,11 +15,19 @@ Usage:
     settings.default_timeout  # 30000
 """
 
+from enum import Enum
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class UserType(str, Enum):
+    STANDARD = "standard"
+    LOCKED = "locked"
+    PROBLEM = "problem"
+    PERFORMANCE = "performance"
 
 
 class Settings(BaseSettings):
@@ -69,6 +77,16 @@ class Settings(BaseSettings):
     report_dir: str = "reports"
 
     # ── Derived paths ────────────────────────────────────────────────────
+    @property
+    def users(self) -> dict[UserType, tuple[str, str]]:
+        """Map each UserType to its (username, password) pair."""
+        return {
+            UserType.STANDARD: (self.standard_user, self.standard_password),
+            UserType.LOCKED: (self.locked_out_user, self.default_password),
+            UserType.PROBLEM: (self.problem_user, self.default_password),
+            UserType.PERFORMANCE: (self.performance_glitch_user, self.default_password),
+        }
+
     @property
     def project_root(self) -> Path:
         return Path(__file__).parent.parent

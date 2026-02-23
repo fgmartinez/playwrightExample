@@ -5,11 +5,11 @@ Page object for SauceDemo login page using modern Playwright patterns.
 Elements are defined as Locators for clean, chainable interactions.
 """
 
-from playwright.async_api import Page, expect
+from playwright.async_api import Page
 
 import logging
 
-from config import settings
+from config import UserType, settings
 from pages.page_helpers import BasePage, get_text, is_visible_safe
 
 logger = logging.getLogger(__name__)
@@ -53,21 +53,10 @@ class LoginPage(BasePage):
         await self.password_input.fill(password)
         await self.login_button.click()
 
-    async def login_as_standard_user(self) -> None:
-        """Login with standard test user."""
-        await self.login(settings.standard_user, settings.standard_password)
-
-    async def login_as_locked_user(self) -> None:
-        """Attempt login with locked out user (negative test)."""
-        await self.login(settings.locked_out_user, settings.default_password)
-
-    async def login_as_problem_user(self) -> None:
-        """Login with problem user (UI glitches)."""
-        await self.login(settings.problem_user, settings.default_password)
-
-    async def login_as_performance_user(self) -> None:
-        """Login with performance glitch user (slow responses)."""
-        await self.login(settings.performance_glitch_user, settings.default_password)
+    async def login_as(self, user_type: UserType) -> None:
+        """Login with a predefined user type."""
+        username, password = settings.users[user_type]
+        await self.login(username, password)
 
     async def enter_username(self, username: str) -> None:
         """Fill the username field."""
@@ -152,18 +141,3 @@ class LoginPage(BasePage):
         except Exception:
             return False
 
-    # ========================================================================
-    # Assertions
-    # ========================================================================
-
-    async def assert_displayed(self) -> None:
-        """Assert login page is displayed with all elements."""
-        await expect(self.username_input).to_be_visible()
-        await expect(self.password_input).to_be_visible()
-        await expect(self.login_button).to_be_visible()
-        logger.debug("Login page displayed correctly")
-
-    async def assert_error_contains(self, text: str) -> None:
-        """Assert error message contains expected text."""
-        error = await self.get_error_message()
-        assert text.lower() in error.lower(), f"Expected '{text}' in error: '{error}'"

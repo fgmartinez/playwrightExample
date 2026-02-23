@@ -12,7 +12,7 @@ Test Categories:
 import pytest
 from playwright.async_api import Page, expect
 
-from config import settings
+from config import UserType, settings
 from pages import LoginPage
 import logging
 
@@ -31,7 +31,9 @@ class TestLoginSuccess:
         """Test successful login with standard user credentials."""
         login_page = LoginPage(page)
         await login_page.navigate()
-        await login_page.assert_displayed()
+        await expect(login_page.username_input).to_be_visible()
+        await expect(login_page.password_input).to_be_visible()
+        await expect(login_page.login_button).to_be_visible()
 
         await login_page.login(
             settings.standard_user,
@@ -47,7 +49,7 @@ class TestLoginSuccess:
         login_page = LoginPage(page)
         await login_page.navigate()
 
-        await login_page.login_as_problem_user()
+        await login_page.login_as(UserType.PROBLEM)
 
         assert await login_page.is_login_successful(), "Problem user should be able to login"
         logger.info("Problem user logged in successfully")
@@ -57,7 +59,7 @@ class TestLoginSuccess:
         login_page = LoginPage(page)
         await login_page.navigate()
 
-        await login_page.login_as_performance_user()
+        await login_page.login_as(UserType.PERFORMANCE)
         await page.wait_for_timeout(2000)
 
         assert await login_page.is_login_successful(), (
@@ -88,7 +90,7 @@ class TestLoginFailure:
         login_page = LoginPage(page)
         await login_page.navigate()
 
-        await login_page.login_as_locked_user()
+        await login_page.login_as(UserType.LOCKED)
 
         assert await login_page.has_error(), "Error message should be displayed"
 
@@ -190,7 +192,9 @@ class TestLoginUI:
         await login_page.navigate()
 
         assert await login_page.is_loaded(), "Login page should be fully loaded"
-        await login_page.assert_displayed()
+        await expect(login_page.username_input).to_be_visible()
+        await expect(login_page.password_input).to_be_visible()
+        await expect(login_page.login_button).to_be_visible()
         logger.info("All login page elements are visible")
 
     async def test_login_button_enabled(self, page: Page) -> None:

@@ -7,7 +7,7 @@ Page objects for the SauceDemo checkout flow:
 3. CheckoutCompletePage - Order confirmation
 """
 
-from playwright.async_api import Page, expect
+from playwright.async_api import Page
 
 import logging
 
@@ -90,14 +90,6 @@ class CheckoutInfoPage(BasePage):
         except Exception:
             return False
 
-    # ========================================================================
-    # Assertions
-    # ========================================================================
-
-    async def assert_displayed(self) -> None:
-        """Assert checkout info page is displayed."""
-        await expect(self.title).to_be_visible()
-        await expect(self.title).to_contain_text("Checkout: Your Information")
 
 
 class CheckoutOverviewPage(BasePage):
@@ -212,14 +204,6 @@ class CheckoutOverviewPage(BasePage):
         summary = await self.get_price_summary()
         return summary.verify_calculation()
 
-    # ========================================================================
-    # Assertions
-    # ========================================================================
-
-    async def assert_displayed(self) -> None:
-        """Assert overview page is displayed."""
-        await expect(self.title).to_be_visible()
-        await expect(self.title).to_contain_text("Checkout: Overview")
 
 
 class CheckoutCompletePage(BasePage):
@@ -275,17 +259,3 @@ class CheckoutCompletePage(BasePage):
         except Exception:
             return False
 
-    # ========================================================================
-    # Assertions
-    # ========================================================================
-
-    async def assert_displayed(self) -> None:
-        """Assert complete page is displayed."""
-        await expect(self.title).to_be_visible()
-        await expect(self.title).to_contain_text("Checkout: Complete!")
-
-    async def assert_order_successful(self) -> None:
-        """Assert order completed successfully."""
-        assert await self.is_order_complete(), "Order should be complete"
-        await expect(self.complete_header).to_be_visible()
-        await expect(self.pony_image).to_be_visible()
