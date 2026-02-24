@@ -1,261 +1,189 @@
-"""
-Checkout Page Objects
-=====================
-Page objects for the SauceDemo checkout flow:
-1. CheckoutInfoPage - Enter customer information
-2. CheckoutOverviewPage - Review order before purchase
-3. CheckoutCompletePage - Order confirmation
-"""
+"""Checkout page objects for the three-step checkout flow.
 
-from playwright.async_api import Page
+1. ``CheckoutInfoPage``     -- enter customer information
+2. ``CheckoutOverviewPage`` -- review the order
+3. ``CheckoutCompletePage`` -- confirmation screen
+"""
 
 import logging
 
-from pages.components import CartItem, PriceSummary
-from pages.page_helpers import BasePage, get_text, is_visible_safe
+from playwright.sync_api import Page
+
+from pages.base_page import AuthenticatedPage
+from pages.components.cart_item import CartItem
+from pages.components.error_banner import ErrorBanner
+from pages.components.price_summary import PriceSummary
+from pages.page_helpers import get_text
 
 logger = logging.getLogger(__name__)
 
 
-class CheckoutInfoPage(BasePage):
-    """Page object for checkout step one - customer information."""
+# ---------------------------------------------------------------------------
+# Step 1 -- Customer information
+# ---------------------------------------------------------------------------
+
+
+class CheckoutInfoPage(AuthenticatedPage):
+    """Checkout step one -- enter first name, last name, postal code."""
 
     URL = "/checkout-step-one.html"
 
     def __init__(self, page: Page) -> None:
         super().__init__(page)
-
-        # Page elements
-        self.title = page.locator(".title")
-
-        # Form fields
         self.first_name = page.get_by_test_id("firstName")
         self.last_name = page.get_by_test_id("lastName")
         self.postal_code = page.get_by_test_id("postalCode")
-
-        # Buttons
         self.continue_button = page.get_by_test_id("continue")
         self.cancel_button = page.get_by_test_id("cancel")
+        self.error = ErrorBanner(page)
 
-        # Error
-        self.error_container = page.get_by_test_id("error")
-        self.error_close_button = page.locator(".error-button")
-
-    # ========================================================================
-    # Form Actions
-    # ========================================================================
-
-    async def fill_info(self, first_name: str, last_name: str, postal_code: str) -> None:
-        """Fill all customer information fields."""
+    def fill_info(self, first_name: str, last_name: str, postal_code: str) -> None:
         logger.info("Filling checkout information")
-        await self.first_name.fill(first_name)
-        await self.last_name.fill(last_name)
-        await self.postal_code.fill(postal_code)
+        self.first_name.fill(first_name)
+        self.last_name.fill(last_name)
+        self.postal_code.fill(postal_code)
 
-    async def continue_checkout(self) -> None:
-        """Click continue to proceed to overview."""
+    def continue_checkout(self) -> None:
         logger.info("Continuing to overview")
-        await self.continue_button.click()
+        self.continue_button.click()
 
-    async def cancel(self) -> None:
-        """Cancel checkout and return to cart."""
+    def cancel(self) -> None:
         logger.info("Canceling checkout")
-        await self.cancel_button.click()
+        self.cancel_button.click()
 
-    async def close_error(self) -> None:
-        """Close error message if visible."""
-        if await is_visible_safe(self.error_container):
-            await self.error_close_button.click()
-
-    # ========================================================================
-    # State Checks
-    # ========================================================================
-
-    async def has_error(self) -> bool:
-        """Check if error is displayed."""
-        return await is_visible_safe(self.error_container)
-
-    async def get_error_message(self) -> str:
-        """Get error message text."""
-        if await self.has_error():
-            return await get_text(self.error_container)
-        return ""
-
-    async def is_loaded(self) -> bool:
-        """Check if page is loaded."""
+    def is_loaded(self) -> bool:
         try:
-            await self.title.wait_for(state="visible", timeout=5000)
-            await self.first_name.wait_for(state="visible", timeout=5000)
+            self.title.wait_for(state="visible", timeout=5000)
+            self.first_name.wait_for(state="visible", timeout=5000)
             return True
         except Exception:
             return False
 
 
+# ---------------------------------------------------------------------------
+# Step 2 -- Order overview
+# ---------------------------------------------------------------------------
 
-class CheckoutOverviewPage(BasePage):
-    """Page object for checkout step two - order overview."""
+
+class CheckoutOverviewPage(AuthenticatedPage):
+    """Checkout step two -- review items, pricing, and shipping info."""
 
     URL = "/checkout-step-two.html"
 
     def __init__(self, page: Page) -> None:
         super().__init__(page)
-
-        # Page elements
-        self.title = page.locator(".title")
-
-        # Summary info
         self.payment_info = page.get_by_test_id("payment-info-value")
         self.shipping_info = page.get_by_test_id("shipping-info-value")
         self.subtotal_label = page.locator(".summary_subtotal_label")
         self.tax_label = page.locator(".summary_tax_label")
         self.total_label = page.locator(".summary_total_label")
-
-        # Buttons
         self.finish_button = page.get_by_test_id("finish")
         self.cancel_button = page.get_by_test_id("cancel")
-
-        # Cart items
         self._cart_items = CartItem.all_items(page)
 
-    # ========================================================================
-    # Order Items
-    # ========================================================================
+    # -- Order items ---------------------------------------------------------
 
-    async def get_all_items(self) -> list[CartItem]:
-        """Get all items in order."""
-        items = await self._cart_items.all()
+    def get_all_items(self) -> list[CartItem]:
+        items = self._cart_items.all()
         return [CartItem(item) for item in items]
 
-    async def get_item_names(self) -> list[str]:
-        """Get names of all items in order."""
-        items = await self.get_all_items()
-        return [await item.get_name() for item in items]
+    def get_item_names(self) -> list[str]:
+        return [item.get_name() for item in self.get_all_items()]
 
-    # ========================================================================
-    # Pricing
-    # ========================================================================
+    # -- Pricing -------------------------------------------------------------
 
-    async def _parse_price(self, text: str) -> float:
-        """Extract price from text like 'Item total: $29.99'."""
+    @staticmethod
+    def _parse_price(text: str) -> float:
+        """Extract the dollar amount from text like ``Item total: $29.99``."""
         if "$" in text:
             return float(text.split("$")[1].strip())
         return 0.0
 
-    async def get_subtotal(self) -> float:
-        """Get order subtotal."""
-        text = await get_text(self.subtotal_label)
-        return await self._parse_price(text)
+    def get_subtotal(self) -> float:
+        return self._parse_price(get_text(self.subtotal_label))
 
-    async def get_tax(self) -> float:
-        """Get tax amount."""
-        text = await get_text(self.tax_label)
-        return await self._parse_price(text)
+    def get_tax(self) -> float:
+        return self._parse_price(get_text(self.tax_label))
 
-    async def get_total(self) -> float:
-        """Get order total."""
-        text = await get_text(self.total_label)
-        return await self._parse_price(text)
+    def get_total(self) -> float:
+        return self._parse_price(get_text(self.total_label))
 
-    async def get_price_summary(self) -> PriceSummary:
-        """Get complete price summary."""
+    def get_price_summary(self) -> PriceSummary:
         return PriceSummary(
-            subtotal=await self.get_subtotal(),
-            tax=await self.get_tax(),
-            total=await self.get_total(),
+            subtotal=self.get_subtotal(),
+            tax=self.get_tax(),
+            total=self.get_total(),
         )
 
-    async def get_payment_info(self) -> str:
-        """Get payment information text."""
-        return await get_text(self.payment_info)
+    def get_payment_info(self) -> str:
+        return get_text(self.payment_info)
 
-    async def get_shipping_info(self) -> str:
-        """Get shipping information text."""
-        return await get_text(self.shipping_info)
+    def get_shipping_info(self) -> str:
+        return get_text(self.shipping_info)
 
-    # ========================================================================
-    # Actions
-    # ========================================================================
+    # -- Actions -------------------------------------------------------------
 
-    async def finish(self) -> None:
-        """Complete the order."""
+    def finish(self) -> None:
         logger.info("Finishing checkout")
-        await self.finish_button.click()
+        self.finish_button.click()
 
-    async def cancel(self) -> None:
-        """Cancel and return to products."""
+    def cancel(self) -> None:
         logger.info("Canceling checkout")
-        await self.cancel_button.click()
+        self.cancel_button.click()
 
-    # ========================================================================
-    # State Checks
-    # ========================================================================
+    # -- Page state ----------------------------------------------------------
 
-    async def is_loaded(self) -> bool:
-        """Check if page is loaded."""
+    def is_loaded(self) -> bool:
         try:
-            await self.title.wait_for(state="visible", timeout=5000)
-            await self.finish_button.wait_for(state="visible", timeout=5000)
+            self.title.wait_for(state="visible", timeout=5000)
+            self.finish_button.wait_for(state="visible", timeout=5000)
             return True
         except Exception:
             return False
 
-    async def verify_total_calculation(self) -> bool:
-        """Verify total equals subtotal + tax."""
-        summary = await self.get_price_summary()
+    def verify_total_calculation(self) -> bool:
+        summary = self.get_price_summary()
         return summary.verify_calculation()
 
 
+# ---------------------------------------------------------------------------
+# Step 3 -- Confirmation
+# ---------------------------------------------------------------------------
 
-class CheckoutCompletePage(BasePage):
-    """Page object for checkout complete - order confirmation."""
+
+class CheckoutCompletePage(AuthenticatedPage):
+    """Checkout complete -- order confirmation screen."""
 
     URL = "/checkout-complete.html"
 
     def __init__(self, page: Page) -> None:
         super().__init__(page)
-
-        # Page elements
-        self.title = page.locator(".title")
         self.complete_header = page.locator(".complete-header")
         self.complete_text = page.locator(".complete-text")
         self.pony_image = page.locator(".pony_express")
         self.back_button = page.get_by_test_id("back-to-products")
 
-    # ========================================================================
-    # Actions
-    # ========================================================================
-
-    async def go_back_to_products(self) -> None:
-        """Return to products page."""
+    def go_back_to_products(self) -> None:
         logger.info("Returning to products")
-        await self.back_button.click()
+        self.back_button.click()
 
-    # ========================================================================
-    # State Checks
-    # ========================================================================
-
-    async def is_order_complete(self) -> bool:
-        """Check if order completed successfully."""
+    def is_order_complete(self) -> bool:
         try:
-            header = await get_text(self.complete_header)
+            header = get_text(self.complete_header)
             return "thank you" in header.lower()
         except Exception:
             return False
 
-    async def get_confirmation_header(self) -> str:
-        """Get confirmation header text."""
-        return await get_text(self.complete_header)
+    def get_confirmation_header(self) -> str:
+        return get_text(self.complete_header)
 
-    async def get_confirmation_message(self) -> str:
-        """Get confirmation message text."""
-        return await get_text(self.complete_text)
+    def get_confirmation_message(self) -> str:
+        return get_text(self.complete_text)
 
-    async def is_loaded(self) -> bool:
-        """Check if page is loaded."""
+    def is_loaded(self) -> bool:
         try:
-            await self.title.wait_for(state="visible", timeout=5000)
-            await self.complete_header.wait_for(state="visible", timeout=5000)
+            self.title.wait_for(state="visible", timeout=5000)
+            self.complete_header.wait_for(state="visible", timeout=5000)
             return True
         except Exception:
             return False
-

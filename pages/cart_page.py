@@ -1,121 +1,88 @@
-"""
-Cart Page Object
-================
-Page object for SauceDemo shopping cart page.
-Uses CartItem component for individual item interactions.
-"""
-
-from playwright.async_api import Page
+"""Cart page object -- view, modify, and check out the shopping cart."""
 
 import logging
 
-from pages.components import CartItem
-from pages.page_helpers import BasePage
+from playwright.sync_api import Page
+
+from pages.base_page import AuthenticatedPage
+from pages.components.cart_item import CartItem
 
 logger = logging.getLogger(__name__)
 
 
-class CartPage(BasePage):
-    """Page object for the SauceDemo shopping cart page."""
+class CartPage(AuthenticatedPage):
+    """Shopping-cart page.
+
+    Inherits header components (burger menu, cart icon) from
+    ``AuthenticatedPage`` and adds cart-specific actions: item listing,
+    removal, totalling, and navigation to checkout.
+    """
 
     URL = "/cart.html"
 
     def __init__(self, page: Page) -> None:
         super().__init__(page)
-
-        # Page elements
-        self.title = page.locator(".title")
         self.checkout_button = page.get_by_test_id("checkout")
         self.continue_shopping_button = page.get_by_test_id("continue-shopping")
-
-        # Cart items - use component class
         self._cart_items = CartItem.all_items(page)
 
-    # ========================================================================
-    # Cart Item Access
-    # ========================================================================
+    # -- Item access ---------------------------------------------------------
 
     def item(self, name: str) -> CartItem:
-        """Get a CartItem component by item name."""
         return CartItem.by_name(self.page, name)
 
-    async def get_all_items(self) -> list[CartItem]:
-        """Get all CartItem components in the cart."""
-        items = await self._cart_items.all()
+    def get_all_items(self) -> list[CartItem]:
+        items = self._cart_items.all()
         return [CartItem(item) for item in items]
 
-    async def get_item_count(self) -> int:
-        """Get number of items in cart."""
-        return await self._cart_items.count()
+    def get_item_count(self) -> int:
+        return self._cart_items.count()
 
-    async def get_all_item_names(self) -> list[str]:
-        """Get names of all items in cart."""
-        items = await self.get_all_items()
-        return [await item.get_name() for item in items]
+    def get_all_item_names(self) -> list[str]:
+        return [item.get_name() for item in self.get_all_items()]
 
-    async def get_all_item_prices(self) -> list[float]:
-        """Get prices of all items in cart."""
-        items = await self.get_all_items()
-        return [await item.get_price() for item in items]
+    def get_all_item_prices(self) -> list[float]:
+        return [item.get_price() for item in self.get_all_items()]
 
-    async def get_total(self) -> float:
-        """Calculate total of all items."""
-        prices = await self.get_all_item_prices()
-        return sum(prices)
+    def get_total(self) -> float:
+        return sum(self.get_all_item_prices())
 
-    async def get_item_details(self, item_name: str) -> dict[str, str]:
-        """Get details of a specific cart item by name."""
-        return await self.item(item_name).get_details()
+    def get_item_details(self, item_name: str) -> dict[str, str]:
+        return self.item(item_name).get_details()
 
-    # ========================================================================
-    # Cart Operations
-    # ========================================================================
+    # -- Cart operations -----------------------------------------------------
 
-    async def remove_item(self, item_name: str) -> None:
-        """Remove an item from cart by name."""
+    def remove_item(self, item_name: str) -> None:
         logger.info(f"Removing from cart: {item_name}")
-        await self.item(item_name).remove()
+        self.item(item_name).remove()
 
-    async def remove_all_items(self) -> None:
-        """Remove all items from cart."""
+    def remove_all_items(self) -> None:
         logger.info("Removing all items from cart")
-        items = await self.get_all_items()
-        for item in items:
-            await item.remove()
+        for item in self.get_all_items():
+            item.remove()
 
-    async def is_empty(self) -> bool:
-        """Check if cart is empty."""
-        return await self.get_item_count() == 0
+    def is_empty(self) -> bool:
+        return self.get_item_count() == 0
 
-    async def has_item(self, item_name: str) -> bool:
-        """Check if item is in cart."""
-        names = await self.get_all_item_names()
-        return item_name in names
+    def has_item(self, item_name: str) -> bool:
+        return item_name in self.get_all_item_names()
 
-    # ========================================================================
-    # Navigation
-    # ========================================================================
+    # -- Navigation ----------------------------------------------------------
 
-    async def proceed_to_checkout(self) -> None:
-        """Click checkout button."""
+    def proceed_to_checkout(self) -> None:
         logger.info("Proceeding to checkout")
-        await self.checkout_button.click()
+        self.checkout_button.click()
 
-    async def continue_shopping(self) -> None:
-        """Return to products page."""
+    def continue_shopping(self) -> None:
         logger.info("Continuing shopping")
-        await self.continue_shopping_button.click()
+        self.continue_shopping_button.click()
 
-    # ========================================================================
-    # Page State
-    # ========================================================================
+    # -- Page state ----------------------------------------------------------
 
-    async def is_loaded(self) -> bool:
-        """Check if cart page is loaded."""
+    def is_loaded(self) -> bool:
         try:
-            await self.title.wait_for(state="visible", timeout=5000)
-            await self.checkout_button.wait_for(state="visible", timeout=5000)
+            self.title.wait_for(state="visible", timeout=5000)
+            self.checkout_button.wait_for(state="visible", timeout=5000)
             return True
         except Exception:
             return False
-
