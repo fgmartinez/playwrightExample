@@ -14,6 +14,7 @@ from pytest import Config, Item, StashKey
 from config import settings
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 phase_key = StashKey[dict[str, Any]]()
