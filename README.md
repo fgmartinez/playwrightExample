@@ -77,6 +77,8 @@ This framework is designed to help you:
 
 ## 🏗️ Architecture
 
+For a senior-level architecture review and roadmap (including AI extensibility), see `docs/ARCHITECTURE_REVIEW.md`.
+
 ### High-Level Architecture
 
 ```
@@ -119,7 +121,11 @@ saucedemo-playwright-framework/
 │   ├── login_page.py          # Login page object
 │   ├── products_page.py       # Products/inventory page
 │   ├── cart_page.py           # Shopping cart page
-│   └── checkout_page.py       # Checkout flow pages
+│   ├── checkout/              # Checkout pages split by step
+│   │   ├── info_page.py
+│   │   ├── overview_page.py
+│   │   └── complete_page.py
+│   └── checkout_page.py       # Backward-compatible re-export
 │
 ├── tests/                       # Test specifications
 │   ├── login/                 # Login tests
