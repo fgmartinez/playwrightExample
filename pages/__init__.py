@@ -11,11 +11,7 @@ Architecture
 
 from pages.base_page import AuthenticatedPage, BasePage
 from pages.cart_page import CartPage
-from pages.checkout_page import (
-    CheckoutCompletePage,
-    CheckoutInfoPage,
-    CheckoutOverviewPage,
-)
+from pages.checkout import CheckoutCompletePage, CheckoutInfoPage, CheckoutOverviewPage
 from pages.components import (
     BurgerMenu,
     CartIcon,
